@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Productos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="layout">
+  <div id="sidebar-root"></div>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Productos</div>
+        <div class="page-subtitle">Catálogo de productos cotizables</div>
+      </div>
+      <div class="flex gap-8">
+        <label class="btn btn-secondary" title="Importar desde Excel (.xlsx)">
+          ⬆ Importar Excel
+          <input type="file" id="input-excel" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
+        </label>
+        <button class="btn btn-primary" onclick="openModal()">+ Nuevo producto</button>
+      </div>
+    </div>
+
+    <div id="alert-box" class="alert hidden"></div>
+
+    <div class="card">
+      <div class="search-bar">
+        <select class="form-control" id="search-campo" style="width:160px" onchange="filtrar()">
+          <option value="todos">Todos los campos</option>
+          <option value="marca">Marca</option>
+          <option value="equipo">Equipo</option>
+          <option value="modelo">Modelo</option>
+          <option value="descripcion">Descripción</option>
+        </select>
+        <input type="text" class="form-control" id="search" placeholder="Buscar..." oninput="filtrar()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Marca</th>
+              <th>Equipo</th>
+              <th>Modelo</th>
+              <th>Descripción</th>
+              <th>Precio lista</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body">
+            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Nuevo producto</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-alert" class="alert hidden"></div>
+    <div class="form-group">
+      <label class="form-label">Marca</label>
+      <input type="text" class="form-control" id="f-marca" placeholder="KINGSTAR">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Equipo</label>
+      <input type="text" class="form-control" id="f-equipo" placeholder="Secadora Industrial">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Modelo</label>
+      <input type="text" class="form-control" id="f-modelo" placeholder="SDR-2060">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <textarea class="form-control" id="f-descripcion" rows="3" placeholder="Descripción del producto..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Precio de lista (MXN)</label>
+      <input type="number" class="form-control" id="f-precio" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <div class="flex gap-8 mt-16" style="justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+requireAdmin();
+document.getElementById('sidebar-root').innerHTML = renderSidebar('productos');
+
+let productos = [];
+let editId = null;
+
+async function cargar() {
+  try {
+    const data = await apiFetch('/productos/');
+    productos = Array.isArray(data) ? data : [];
+    renderTabla(productos);
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+function filtrar() {
+  const q     = document.getElementById('search').value.toLowerCase().trim();
+  const campo = document.getElementById('search-campo').value;
+
+  const filtrados = productos.filter(p => {
+    if (!q) return true;
+    if (campo === 'todos') {
+      return (p.marca       || '').toLowerCase().includes(q) ||
+             (p.equipo      || '').toLowerCase().includes(q) ||
+             (p.modelo      || '').toLowerCase().includes(q) ||
+             (p.descripcion || '').toLowerCase().includes(q);
+    }
+    const valor = campo === 'descripcion' ? (p.descripcion || '') : (p[campo] || '');
+    return valor.toLowerCase().includes(q);
+  });
+
+  renderTabla(filtrados);
+}
+
+function renderTabla(data) {
+  const tbody = document.getElementById('tabla-body');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Sin productos</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(p => `
+    <tr>
+      <td><strong style="color:var(--text)">${p.marca}</strong></td>
+      <td>${p.equipo}</td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:12px">${p.modelo}</span></td>
+      <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.descripcion || '—'}</td>
+      <td><strong style="color:var(--accent2)">${formatMXN(p.precio_lista)}</strong></td>
+      <td>${p.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-red">Inactivo</span>'}</td>
+      <td>
+        <div class="flex gap-8">
+          <button class="btn btn-secondary btn-sm" onclick="editar('${p.id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="toggleActivo('${p.id}', ${p.activo})">
+            ${p.activo ? 'Desactivar' : 'Activar'}
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openModal(id = null) {
+  editId = id;
+  document.getElementById('modal-title').textContent = id ? 'Editar producto' : 'Nuevo producto';
+  if (!id) {
+    ['f-marca','f-equipo','f-modelo','f-descripcion','f-precio'].forEach(f => document.getElementById(f).value = '');
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editId = null;
+}
+
+function editar(id) {
+  const p = productos.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('f-marca').value = p.marca;
+  document.getElementById('f-equipo').value = p.equipo;
+  document.getElementById('f-modelo').value = p.modelo;
+  document.getElementById('f-descripcion').value = p.descripcion || '';
+  document.getElementById('f-precio').value = p.precio_lista;
+  openModal(id);
+}
+
+async function guardar() {
+  const body = {
+    marca: document.getElementById('f-marca').value.trim(),
+    equipo: document.getElementById('f-equipo').value.trim(),
+    modelo: document.getElementById('f-modelo').value.trim(),
+    descripcion: document.getElementById('f-descripcion').value.trim(),
+    precio_lista: parseFloat(document.getElementById('f-precio').value),
+  };
+  if (!body.marca || !body.equipo || !body.modelo || isNaN(body.precio_lista)) {
+    showAlert('Completa todos los campos requeridos', 'danger', 'modal-alert');
+    return;
+  }
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  try {
+    if (editId) {
+      await apiFetch(`/productos/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      await apiFetch('/productos/', { method: 'POST', body: JSON.stringify(body) });
+    }
+    closeModal();
+    await cargar();
+    showAlert('Producto guardado correctamente', 'success');
+  } catch (e) {
+    showAlert(e.message, 'danger', 'modal-alert');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function toggleActivo(id, activo) {
+  try {
+    await apiFetch(`/productos/${id}`, { method: 'PUT', body: JSON.stringify({ activo: !activo }) });
+    await cargar();
+    showAlert(activo ? 'Producto desactivado' : 'Producto activado', 'success');
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+async function importarExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  const label = input.closest('label');
+  const textoOriginal = label.childNodes[0].textContent.trim();
+  label.childNodes[0].textContent = ' Importando...';
+  label.style.opacity = '0.6';
+  label.style.pointerEvents = 'none';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch(`${API_BASE}${API_PATH}/productos/importar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+    await cargar();
+    const partes = [];
+    if (data.insertados)  partes.push(`${data.insertados} nuevos`);
+    if (data.actualizados) partes.push(`${data.actualizados} actualizados`);
+    if (data.omitidos)    partes.push(`${data.omitidos} omitidos`);
+    showAlert(`✓ Importación exitosa — ${partes.join(', ')}.`, 'success');
+  } catch (e) {
+    showAlert(`Error al importar: ${e.message}`);
+  } finally {
+    label.childNodes[0].textContent = textoOriginal;
+    label.style.opacity = '';
+    label.style.pointerEvents = '';
+  }
+}
+
+cargar();
+</script>
+</body>
+</html>

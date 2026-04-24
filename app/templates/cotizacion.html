@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #222; margin: 0; padding: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .empresa { font-size: 18px; font-weight: bold; color: #c0392b; }
+  .numero { font-size: 13px; font-weight: bold; }
+  h3 { margin: 16px 0 6px; font-size: 12px; text-transform: uppercase; color: #555; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th { background: #c0392b; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+  tr:nth-child(even) td { background: #f9f9f9; }
+  .totales { margin-top: 16px; text-align: right; }
+  .totales table { width: 260px; margin-left: auto; }
+  .totales td { border: none; padding: 3px 8px; }
+  .total-final td { font-weight: bold; font-size: 13px; border-top: 2px solid #c0392b; }
+  .clausulas { margin-top: 24px; font-size: 9px; color: #555; line-height: 1.5; }
+  .footer { margin-top: 30px; text-align: center; font-size: 9px; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="empresa">Tu Empresa S.A. de C.V.</div>
+    <div>tu@empresa.com · (33) 0000-0000</div>
+  </div>
+  <div style="text-align:right">
+    <div class="numero">COTIZACIÓN # {{ cot.numero_cotizacion }}</div>
+    <div>Fecha: {{ cot.fecha.strftime('%d/%m/%Y') }}</div>
+    <div>Vigencia: {{ cot.vigencia.strftime('%d/%m/%Y') if cot.vigencia else '—' }}</div>
+  </div>
+</div>
+
+<h3>Cliente</h3>
+<table>
+  <tr><td><strong>{{ cot.cliente.nombre_razon_social }}</strong></td></tr>
+  {% if cot.cliente.telefono %}<tr><td>Tel: {{ cot.cliente.telefono }}</td></tr>{% endif %}
+  {% if cot.cliente.email %}<tr><td>{{ cot.cliente.email }}</td></tr>{% endif %}
+</table>
+
+<h3>Productos cotizados</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Marca</th>
+      <th>Equipo</th>
+      <th>Modelo</th>
+      <th>Descripción</th>
+      <th style="text-align:right">Cant.</th>
+      <th style="text-align:right">Precio unit.</th>
+      <th style="text-align:right">Importe</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in cot.items %}
+    <tr>
+      <td>{{ item.producto.marca }}</td>
+      <td>{{ item.producto.equipo }}</td>
+      <td>{{ item.producto.modelo }}</td>
+      <td>{{ item.producto.descripcion or '—' }}</td>
+      <td style="text-align:right">{{ item.cantidad }}</td>
+      <td style="text-align:right">${{ "%.2f"|format(item.precio_final) }}</td>
+      <td style="text-align:right">${{ "%.2f"|format(item.importe) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="totales">
+  <table>
+    <tr><td>Subtotal</td><td style="text-align:right">${{ "%.2f"|format(cot.subtotal) }} MX</td></tr>
+    <tr><td>IVA (16%)</td><td style="text-align:right">${{ "%.2f"|format(cot.iva) }} MX</td></tr>
+    <tr class="total-final"><td>Total</td><td style="text-align:right">${{ "%.2f"|format(cot.total) }} MX</td></tr>
+  </table>
+</div>
+
+{% if cot.notas %}
+<h3>Notas</h3>
+<p>{{ cot.notas }}</p>
+{% endif %}
+
+<div class="clausulas">
+  <strong>Condiciones:</strong> Cotización válida por 10 días. Precios en MXN más IVA. 
+  Se requiere 50% de anticipo al confirmar el pedido. Entrega en 1 a 12 semanas según disponibilidad.
+</div>
+
+<div class="footer">
+  Tu Empresa S.A. de C.V. · Guadalajara, Jalisco · (33) 0000-0000
+</div>
+
+</body>
+</html>

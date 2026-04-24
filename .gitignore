@@ -1,0 +1,26 @@
+# Entorno virtual
+venv/
+.venv/
+env/
+
+# Variables de entorno (contienen credenciales)
+.env
+.env.*
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Distribución / empaquetado
+dist/
+build/
+*.egg-info/
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

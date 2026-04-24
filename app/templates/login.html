@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar sesión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117; --bg2: #181c27; --bg3: #1e2333;
+    --border: #2a2f45; --accent: #4f7cff; --danger: #ff5c5c;
+    --text: #e8ecf4; --text2: #8b93a8; --text3: #555e78;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-wrap {
+    width: 100%;
+    max-width: 400px;
+    padding: 24px;
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .logo h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+  .logo p { font-size: 13px; color: var(--text3); margin-top: 4px; }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+  }
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-control {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-control:focus { border-color: var(--accent); }
+  .form-control::placeholder { color: var(--text3); }
+  .btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .btn:hover { background: #3d6be8; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .alert {
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 18px;
+    background: rgba(255,92,92,0.1);
+    border: 1px solid rgba(255,92,92,0.2);
+    color: var(--danger);
+    display: none;
+  }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="logo">
+    <h1>Cotizaciones</h1>
+    <p>Sistema de gestión comercial</p>
+  </div>
+  <div class="card">
+    <div class="alert" id="alert-box"></div>
+    <div class="form-group">
+      <label class="form-label">Correo electrónico</label>
+      <input type="email" class="form-control" id="email" placeholder="admin@empresa.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <input type="password" class="form-control" id="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn" id="btn-login" onclick="doLogin()">
+      Iniciar sesión
+    </button>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+
+document.getElementById('password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+if (localStorage.getItem('token')) window.location.href = '/cotizaciones';
+
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('btn-login');
+  const alert = document.getElementById('alert-box');
+
+  if (!email || !password) {
+    showErr('Completa todos los campos');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Entrando...';
+  alert.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Credenciales incorrectas');
+
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify({
+      nombre: data.nombre,
+      rol: data.rol,
+      margen_min: data.margen_min,
+      margen_max: data.margen_max,
+    }));
+    window.location.href = '/cotizaciones';
+  } catch (err) {
+    showErr(err.message);
+    btn.disabled = false;
+    btn.innerHTML = 'Iniciar sesión';
+  }
+}
+
+function showErr(msg) {
+  const el = document.getElementById('alert-box');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>

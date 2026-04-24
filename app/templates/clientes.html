@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="layout">
+  <div id="sidebar-root"></div>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Clientes</div>
+        <div class="page-subtitle">Directorio de clientes y razones sociales</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">+ Nuevo cliente</button>
+    </div>
+
+    <div id="alert-box" class="alert hidden"></div>
+
+    <div class="card">
+      <div class="search-bar">
+        <input type="text" class="form-control" id="search" placeholder="Buscar por nombre, teléfono o email..." oninput="filtrar()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre / Razón social</th>
+              <th>Teléfono</th>
+              <th>Email</th>
+              <th>Registro</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body">
+            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Nuevo cliente</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-alert" class="alert hidden"></div>
+    <div class="form-group">
+      <label class="form-label">Nombre o razón social *</label>
+      <input type="text" class="form-control" id="f-nombre" placeholder="Empresa S.A. de C.V.">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teléfono de contacto</label>
+      <input type="text" class="form-control" id="f-telefono" placeholder="33 1234 5678">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Correo electrónico</label>
+      <input type="email" class="form-control" id="f-email" placeholder="contacto@empresa.com">
+    </div>
+    <div class="flex gap-8 mt-16" style="justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+requireAuth();
+document.getElementById('sidebar-root').innerHTML = renderSidebar('clientes');
+
+let clientes = [];
+let editId = null;
+
+async function cargar() {
+  try {
+    clientes = await apiFetch('/clientes/');
+    renderTabla(clientes);
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+function filtrar() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const filtrados = clientes.filter(c =>
+    c.nombre_razon_social.toLowerCase().includes(q) ||
+    (c.telefono || '').toLowerCase().includes(q) ||
+    (c.email || '').toLowerCase().includes(q)
+  );
+  renderTabla(filtrados);
+}
+
+function renderTabla(data) {
+  const tbody = document.getElementById('tabla-body');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Sin clientes registrados</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(c => `
+    <tr>
+      <td><strong style="color:var(--text)">${c.nombre_razon_social}</strong></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${c.telefono || '—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${c.email || '—'}</td>
+      <td style="color:var(--text3)">${formatDate(c.created_at)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editar('${c.id}')">Editar</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openModal(id = null) {
+  editId = id;
+  document.getElementById('modal-title').textContent = id ? 'Editar cliente' : 'Nuevo cliente';
+  if (!id) {
+    ['f-nombre','f-telefono','f-email'].forEach(f => document.getElementById(f).value = '');
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editId = null;
+}
+
+function editar(id) {
+  const c = clientes.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('f-nombre').value = c.nombre_razon_social;
+  document.getElementById('f-telefono').value = c.telefono || '';
+  document.getElementById('f-email').value = c.email || '';
+  openModal(id);
+}
+
+async function guardar() {
+  const body = {
+    nombre_razon_social: document.getElementById('f-nombre').value.trim(),
+    telefono: document.getElementById('f-telefono').value.trim() || null,
+    email: document.getElementById('f-email').value.trim() || null,
+  };
+
+  if (!body.nombre_razon_social) {
+    showAlert('El nombre o razón social es requerido', 'danger', 'modal-alert');
+    return;
+  }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  try {
+    if (editId) {
+      await apiFetch(`/clientes/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      await apiFetch('/clientes/', { method: 'POST', body: JSON.stringify(body) });
+    }
+    closeModal();
+    await cargar();
+    showAlert('Cliente guardado correctamente', 'success');
+  } catch (e) {
+    showAlert(e.message, 'danger', 'modal-alert');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+cargar();
+</script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usuarios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="layout">
+  <div id="sidebar-root"></div>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Usuarios</div>
+        <div class="page-subtitle">Administra vendedores y sus rangos de precio</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">+ Nuevo usuario</button>
+    </div>
+
+    <div id="alert-box" class="alert hidden"></div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Margen mín</th>
+              <th>Margen máx</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body">
+            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Nuevo usuario</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-alert" class="alert hidden"></div>
+    <div class="form-group">
+      <label class="form-label">Nombre</label>
+      <input type="text" class="form-control" id="f-nombre" placeholder="Nombre completo">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-control" id="f-email" placeholder="vendedor@empresa.com">
+    </div>
+    <div class="form-group" id="pwd-group">
+      <label class="form-label">Contraseña</label>
+      <input type="password" class="form-control" id="f-password" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Rol</label>
+      <select class="form-control" id="f-rol">
+        <option value="vendedor">Vendedor</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">Margen mínimo (%)</label>
+        <input type="number" class="form-control" id="f-margen-min" value="-10" step="1" min="-100" max="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Margen máximo (%)</label>
+        <input type="number" class="form-control" id="f-margen-max" value="10" step="1" min="0" max="100">
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:-8px;margin-bottom:16px">
+      Rango dentro del cual el vendedor puede ajustar el precio de lista al cotizar.
+    </p>
+    <div class="flex gap-8" style="justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+requireAdmin();
+document.getElementById('sidebar-root').innerHTML = renderSidebar('usuarios');
+
+let usuarios = [];
+let editId = null;
+
+async function cargar() {
+  try {
+    usuarios = await apiFetch('/usuarios/');
+    renderTabla();
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+function renderTabla() {
+  const tbody = document.getElementById('tabla-body');
+  if (!usuarios.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Sin usuarios</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = usuarios.map(u => `
+    <tr>
+      <td><strong style="color:var(--text)">${u.nombre}</strong></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${u.email}</td>
+      <td>${u.rol === 'admin'
+        ? '<span class="badge badge-blue">Admin</span>'
+        : '<span class="badge badge-gray">Vendedor</span>'}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--danger)">${u.margen_min}%</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--accent2)">+${u.margen_max}%</td>
+      <td>${u.activo
+        ? '<span class="badge badge-green">Activo</span>'
+        : '<span class="badge badge-red">Inactivo</span>'}</td>
+      <td>
+        <div class="flex gap-8">
+          <button class="btn btn-secondary btn-sm" onclick="editar('${u.id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="toggleActivo('${u.id}', ${u.activo})">
+            ${u.activo ? 'Desactivar' : 'Activar'}
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openModal(id = null) {
+  editId = id;
+  document.getElementById('modal-title').textContent = id ? 'Editar usuario' : 'Nuevo usuario';
+  document.getElementById('pwd-group').style.display = id ? 'none' : 'block';
+  if (!id) {
+    ['f-nombre','f-email','f-password'].forEach(f => document.getElementById(f).value = '');
+    document.getElementById('f-rol').value = 'vendedor';
+    document.getElementById('f-margen-min').value = -10;
+    document.getElementById('f-margen-max').value = 10;
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editId = null;
+}
+
+function editar(id) {
+  const u = usuarios.find(x => x.id === id);
+  if (!u) return;
+  document.getElementById('f-nombre').value = u.nombre;
+  document.getElementById('f-email').value = u.email;
+  document.getElementById('f-rol').value = u.rol;
+  document.getElementById('f-margen-min').value = u.margen_min;
+  document.getElementById('f-margen-max').value = u.margen_max;
+  openModal(id);
+}
+
+async function guardar() {
+  const margenMin = parseFloat(document.getElementById('f-margen-min').value);
+  const margenMax = parseFloat(document.getElementById('f-margen-max').value);
+
+  if (margenMin > margenMax) {
+    showAlert('El margen mínimo no puede ser mayor que el máximo', 'danger', 'modal-alert');
+    return;
+  }
+
+  const body = {
+    nombre: document.getElementById('f-nombre').value.trim(),
+    email: document.getElementById('f-email').value.trim(),
+    rol: document.getElementById('f-rol').value,
+    margen_min: margenMin,
+    margen_max: margenMax,
+  };
+
+  if (!editId) {
+    const pwd = document.getElementById('f-password').value;
+    if (pwd.length < 6) {
+      showAlert('La contraseña debe tener al menos 6 caracteres', 'danger', 'modal-alert');
+      return;
+    }
+    body.password = pwd;
+  }
+
+  if (!body.nombre || !body.email) {
+    showAlert('Completa todos los campos requeridos', 'danger', 'modal-alert');
+    return;
+  }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  try {
+    if (editId) {
+      await apiFetch(`/usuarios/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      await apiFetch('/usuarios/', { method: 'POST', body: JSON.stringify(body) });
+    }
+    closeModal();
+    await cargar();
+    showAlert('Usuario guardado correctamente', 'success');
+  } catch (e) {
+    showAlert(e.message, 'danger', 'modal-alert');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function toggleActivo(id, activo) {
+  try {
+    await apiFetch(`/usuarios/${id}`, { method: 'PUT', body: JSON.stringify({ activo: !activo }) });
+    await cargar();
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+cargar();
+</script>
+</body>
+</html>

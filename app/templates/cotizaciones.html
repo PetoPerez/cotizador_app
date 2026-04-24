@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+  /* Item row dentro del formulario de nueva cotización */
+  .item-row {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .item-row .remove-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .item-row .remove-btn:hover { color: var(--danger); }
+  .item-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+  .precio-preview {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .precio-preview .final { font-size: 15px; color: var(--accent2); font-weight: 500; }
+  .totales-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+  .totales-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+  }
+  .totales-row:last-child { border-bottom: none; font-size: 17px; font-weight: 600; color: var(--text); padding-top: 12px; }
+  .totales-row span:last-child { font-family: 'DM Mono', monospace; }
+  /* Panel nueva cotización */
+  .panel {
+    display: none;
+    animation: fadeIn 0.2s ease;
+  }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .tab-btns { display: flex; gap: 8px; margin-bottom: 24px; }
+  .tab-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+  .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div id="sidebar-root"></div>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Cotizaciones</div>
+        <div class="page-subtitle">Historial y creación de cotizaciones</div>
+      </div>
+      <button class="btn btn-primary" onclick="showPanel('nueva')">+ Nueva cotización</button>
+    </div>
+
+    <div id="alert-box" class="alert hidden"></div>
+
+    <!-- Panel: Lista -->
+    <div id="panel-lista" class="panel active">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="card">
+        <div class="search-bar">
+          <input type="text" class="form-control" id="search" placeholder="Buscar por número, cliente o vendedor..." oninput="filtrar()">
+          <select class="form-control" id="filter-estado" style="width:160px" onchange="filtrar()">
+            <option value="">Todos los estados</option>
+            <option value="borrador">Borrador</option>
+            <option value="enviada">Enviada</option>
+            <option value="aceptada">Aceptada</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Vendedor</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Vigencia</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-body">
+              <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel: Nueva cotización -->
+    <div id="panel-nueva" class="panel">
+      <div class="tab-btns">
+        <button class="tab-btn active" onclick="showPanel('lista')">← Volver a lista</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
+        <!-- Columna izquierda -->
+        <div>
+          <div class="card" style="margin-bottom:20px">
+            <div style="font-size:15px;font-weight:600;margin-bottom:18px">Datos del cliente</div>
+            <div class="form-group">
+              <label class="form-label">Buscar cliente</label>
+              <input type="text" class="form-control" id="buscar-cliente" placeholder="Escribe para buscar..." oninput="buscarCliente()">
+              <div id="cliente-dropdown" style="display:none;position:relative;z-index:50">
+                <div id="cliente-opciones" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-top:4px;overflow:hidden"></div>
+              </div>
+            </div>
+            <div id="cliente-seleccionado" style="display:none;background:var(--bg3);border:1px solid var(--accent);border-radius:8px;padding:12px 14px;margin-top:4px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-weight:600;color:var(--text)" id="cs-nombre"></div>
+                  <div style="font-size:12px;color:var(--text3);margin-top:2px" id="cs-detalle"></div>
+                </div>
+                <button onclick="limpiarCliente()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">×</button>
+              </div>
+            </div>
+            <div style="margin-top:12px">
+              <button class="btn btn-secondary btn-sm" onclick="openModalCliente()">+ Crear nuevo cliente</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+              <div style="font-size:15px;font-weight:600">Productos</div>
+              <button class="btn btn-secondary btn-sm" onclick="agregarItem()">+ Agregar producto</button>
+            </div>
+            <div id="items-container">
+              <div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">
+                Agrega al menos un producto para continuar
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group mt-24">
+            <label class="form-label">Notas (opcional)</label>
+            <textarea class="form-control" id="f-notas" rows="3" placeholder="Condiciones especiales, observaciones..."></textarea>
+          </div>
+        </div>
+
+        <!-- Columna derecha: resumen -->
+        <div>
+          <div class="card" style="position:sticky;top:24px">
+            <div style="font-size:15px;font-weight:600;margin-bottom:18px">Resumen</div>
+            <div class="totales-box">
+              <div class="totales-row"><span>Subtotal</span><span id="r-subtotal">$0.00</span></div>
+              <div class="totales-row"><span>IVA (16%)</span><span id="r-iva">$0.00</span></div>
+              <div class="totales-row"><span>Total</span><span id="r-total">$0.00</span></div>
+            </div>
+            <button class="btn btn-primary w-full mt-16" id="btn-generar" onclick="generarCotizacion()">
+              Generar cotización
+            </button>
+            <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">
+              Se generará un PDF descargable
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal cambio estado (admin) -->
+<div class="modal-overlay" id="modal-estado">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">Cambiar estado</div>
+      <button class="modal-close" onclick="closeModalEstado()">×</button>
+    </div>
+    <div id="modal-estado-alert" class="alert hidden"></div>
+    <div class="form-group">
+      <label class="form-label">Nuevo estado</label>
+      <select class="form-control" id="f-estado">
+        <option value="borrador">Borrador</option>
+        <option value="enviada">Enviada</option>
+        <option value="aceptada">Aceptada</option>
+        <option value="cancelada">Cancelada</option>
+      </select>
+    </div>
+    <div class="flex gap-8" style="justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModalEstado()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-estado" onclick="guardarEstado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo cliente rápido -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Nuevo cliente</div>
+      <button class="modal-close" onclick="closeModalCliente()">×</button>
+    </div>
+    <div id="modal-cliente-alert" class="alert hidden"></div>
+    <div class="form-group">
+      <label class="form-label">Nombre o razón social *</label>
+      <input type="text" class="form-control" id="nc-nombre" placeholder="Empresa S.A. de C.V.">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teléfono</label>
+      <input type="text" class="form-control" id="nc-telefono" placeholder="33 1234 5678">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-control" id="nc-email" placeholder="contacto@empresa.com">
+    </div>
+    <div class="flex gap-8" style="justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModalCliente()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+requireAuth();
+document.getElementById('sidebar-root').innerHTML = renderSidebar('cotizaciones');
+
+const user = getUser();
+const isAdmin = user.rol === 'admin';
+
+let cotizaciones = [];
+let productos = [];
+let clientes = [];
+let items = [];       // items del formulario nueva cotización
+let clienteId = null;
+let estadoEditId = null;
+
+// ─── Inicialización ───────────────────────────────────────
+async function init() {
+  try {
+    [cotizaciones, productos, clientes] = await Promise.all([
+      apiFetch('/cotizaciones/'),
+      apiFetch('/productos/'),
+      apiFetch('/clientes/'),
+    ]);
+    renderStats();
+    renderTabla(cotizaciones);
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+// ─── Estadísticas ─────────────────────────────────────────
+function renderStats() {
+  const total = cotizaciones.length;
+  const aceptadas = cotizaciones.filter(c => c.estado === 'aceptada').length;
+  const montoTotal = cotizaciones.filter(c => c.estado === 'aceptada').reduce((s, c) => s + c.total, 0);
+  const pendientes = cotizaciones.filter(c => c.estado === 'enviada').length;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total cotizaciones</div>
+      <div class="stat-value blue">${total}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Aceptadas</div>
+      <div class="stat-value green">${aceptadas}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Monto aceptado</div>
+      <div class="stat-value green" style="font-size:20px">${formatMXN(montoTotal)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pendientes respuesta</div>
+      <div class="stat-value orange">${pendientes}</div>
+    </div>
+  `;
+}
+
+// ─── Tabla lista ──────────────────────────────────────────
+function filtrar() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const estado = document.getElementById('filter-estado').value;
+  const filtrados = cotizaciones.filter(c => {
+    const matchQ = c.numero_cotizacion.toLowerCase().includes(q) ||
+      c.cliente.nombre_razon_social.toLowerCase().includes(q) ||
+      c.vendedor.nombre.toLowerCase().includes(q);
+    const matchEstado = !estado || c.estado === estado;
+    return matchQ && matchEstado;
+  });
+  renderTabla(filtrados);
+}
+
+function renderTabla(data) {
+  const tbody = document.getElementById('tabla-body');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">Sin cotizaciones</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(c => `
+    <tr>
+      <td><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">${c.numero_cotizacion}</span></td>
+      <td><strong style="color:var(--text)">${c.cliente.nombre_razon_social}</strong></td>
+      <td style="color:var(--text2)">${c.vendedor.nombre}</td>
+      <td><strong style="color:var(--accent2)">${formatMXN(c.total)}</strong></td>
+      <td>${estadoBadge(c.estado)}</td>
+      <td style="color:var(--text3)">${formatDate(c.fecha)}</td>
+      <td style="color:var(--text3)">${formatDate(c.vigencia)}</td>
+      <td>
+        <div class="flex gap-8">
+          <button class="btn btn-success btn-sm" onclick="descargarPDF('${c.id}', '${c.numero_cotizacion}')">⬇ PDF</button>
+          ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="openModalEstado('${c.id}', '${c.estado}')">Estado</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ─── Panels ───────────────────────────────────────────────
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  if (name === 'nueva') resetNueva();
+  if (name === 'lista') init();
+}
+
+// ─── Nueva cotización ─────────────────────────────────────
+function resetNueva() {
+  items = [];
+  clienteId = null;
+  document.getElementById('buscar-cliente').value = '';
+  document.getElementById('cliente-seleccionado').style.display = 'none';
+  document.getElementById('f-notas').value = '';
+  renderItems();
+  calcularTotales();
+}
+
+// ─── Búsqueda de cliente ──────────────────────────────────
+function buscarCliente() {
+  const q = document.getElementById('buscar-cliente').value.toLowerCase();
+  const dd = document.getElementById('cliente-dropdown');
+  const opts = document.getElementById('cliente-opciones');
+  if (!q) { dd.style.display = 'none'; return; }
+  const matches = clientes.filter(c => c.nombre_razon_social.toLowerCase().includes(q)).slice(0, 6);
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  opts.innerHTML = matches.map(c => `
+    <div onclick="seleccionarCliente('${c.id}')"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s"
+      onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:500;color:var(--text)">${c.nombre_razon_social}</div>
+      <div style="font-size:11px;color:var(--text3)">${c.telefono || ''} ${c.email || ''}</div>
+    </div>
+  `).join('');
+  dd.style.display = 'block';
+}
+
+function seleccionarCliente(id) {
+  const c = clientes.find(x => x.id === id);
+  if (!c) return;
+  clienteId = id;
+  document.getElementById('cs-nombre').textContent = c.nombre_razon_social;
+  document.getElementById('cs-detalle').textContent = [c.telefono, c.email].filter(Boolean).join(' · ');
+  document.getElementById('cliente-seleccionado').style.display = 'block';
+  document.getElementById('cliente-dropdown').style.display = 'none';
+  document.getElementById('buscar-cliente').value = '';
+}
+
+function limpiarCliente() {
+  clienteId = null;
+  document.getElementById('cliente-seleccionado').style.display = 'none';
+}
+
+// ─── Items ────────────────────────────────────────────────
+function agregarItem() {
+  const user = getUser();
+  items.push({
+    productoId: null,
+    cantidad: 1,
+    ajuste: 0,
+    margenMin: user.margen_min ?? -10,
+    margenMax: user.margen_max ?? 10,
+  });
+  renderItems();
+}
+
+function renderItems() {
+  const container = document.getElementById('items-container');
+  if (!items.length) {
+    container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">Agrega al menos un producto para continuar</div>`;
+    calcularTotales();
+    return;
+  }
+
+  container.innerHTML = items.map((item, i) => {
+    const producto = productos.find(p => p.id === item.productoId);
+    const precioLista = producto ? parseFloat(producto.precio_lista) : 0;
+    const precioFinal = precioLista * (1 + item.ajuste / 100);
+    const importe = precioFinal * item.cantidad;
+
+    return `
+    <div class="item-row" id="item-row-${i}">
+      <button class="remove-btn" onclick="quitarItem(${i})">×</button>
+      <div class="item-grid">
+        <div class="form-group" style="margin-bottom:0;position:relative">
+          <label class="form-label">Producto</label>
+          ${producto ? `
+            <div style="background:var(--bg);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:600;font-size:13px;color:var(--text)">${producto.marca} · ${producto.equipo}</div>
+                <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${producto.modelo} · ${formatMXN(precioLista)}</div>
+              </div>
+              <button onclick="limpiarProductoItem(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;padding:0 6px">×</button>
+            </div>
+          ` : `
+            <input type="text" class="form-control" id="prod-search-${i}"
+                   placeholder="Buscar por marca, equipo o modelo..."
+                   oninput="buscarProductoItem(${i}, this.value)"
+                   autocomplete="off">
+            <div id="prod-dd-${i}"
+                 style="display:none;position:absolute;top:100%;left:0;right:0;z-index:60;
+                        background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+                        margin-top:4px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4)"></div>
+          `}
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Cantidad</label>
+          <input type="number" class="form-control" value="${item.cantidad}" min="1"
+            onchange="cambiarCantidad(${i}, this.value)">
+        </div>
+      </div>
+      ${producto ? `
+      <div style="margin-top:12px">
+        <label class="form-label">Ajuste de precio</label>
+        <div class="slider-wrap">
+          <span style="font-size:12px;color:var(--danger);font-family:'DM Mono',monospace">${item.margenMin}%</span>
+          <input type="range" min="${item.margenMin}" max="${item.margenMax}" step="0.5" value="${item.ajuste}"
+            oninput="cambiarAjuste(${i}, this.value)">
+          <span style="font-size:12px;color:var(--accent2);font-family:'DM Mono',monospace">+${item.margenMax}%</span>
+          <span class="slider-val">${item.ajuste >= 0 ? '+' : ''}${item.ajuste}%</span>
+        </div>
+        <div class="precio-preview">
+          <span style="color:var(--text3);font-size:12px">
+            Lista: <strong style="font-family:'DM Mono',monospace">${formatMXN(precioLista)}</strong>
+          </span>
+          <label style="display:flex;align-items:center;gap:6px;margin:0">
+            <span style="font-size:11px;color:var(--text3);white-space:nowrap">Unitario $</span>
+            <input type="number" id="precio-unit-${i}"
+                   value="${precioFinal.toFixed(2)}" step="0.01" min="0"
+                   style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+                          padding:5px 8px;color:var(--text);font-family:'DM Mono',monospace;
+                          font-size:13px;width:120px;outline:none;text-align:right"
+                   oninput="cambiarPrecioManual(${i}, this.value)"
+                   onfocus="this.style.borderColor='var(--accent)'"
+                   onblur="normalizarPrecio(${i})">
+          </label>
+          <span class="final">${formatMXN(importe)}</span>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  calcularTotales();
+}
+
+function buscarProductoItem(i, q) {
+  const dd = document.getElementById(`prod-dd-${i}`);
+  if (!dd) return;
+  const texto = q.trim().toLowerCase();
+  if (!texto) { dd.style.display = 'none'; return; }
+
+  const matches = productos.filter(p =>
+    p.marca.toLowerCase().includes(texto) ||
+    p.equipo.toLowerCase().includes(texto) ||
+    p.modelo.toLowerCase().includes(texto) ||
+    (p.descripcion || '').toLowerCase().includes(texto)
+  ).slice(0, 10);
+
+  if (!matches.length) {
+    dd.innerHTML = `<div style="padding:12px 14px;color:var(--text3);font-size:13px">Sin resultados</div>`;
+    dd.style.display = 'block';
+    return;
+  }
+
+  dd.innerHTML = matches.map(p => `
+    <div onclick="seleccionarProductoItem(${i}, '${p.id}')"
+         style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s"
+         onmouseover="this.style.background='var(--bg2)'"
+         onmouseout="this.style.background=''">
+      <div style="font-weight:600;font-size:13px;color:var(--text)">${p.marca} · ${p.equipo}</div>
+      <div style="display:flex;gap:16px;margin-top:3px">
+        <span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${p.modelo}</span>
+        <span style="font-size:12px;color:var(--accent2);font-weight:600">${formatMXN(p.precio_lista)}</span>
+      </div>
+    </div>
+  `).join('');
+  dd.style.display = 'block';
+}
+
+function seleccionarProductoItem(i, productoId) {
+  items[i].productoId = productoId;
+  items[i].ajuste = 0;
+  renderItems();
+}
+
+function limpiarProductoItem(i) {
+  items[i].productoId = null;
+  renderItems();
+}
+
+function cambiarCantidad(i, val) {
+  items[i].cantidad = Math.max(1, parseInt(val) || 1);
+  calcularTotales();
+}
+
+function cambiarAjuste(i, val) {
+  items[i].ajuste = parseFloat(val);
+  const producto = productos.find(p => p.id === items[i].productoId);
+  if (!producto) return;
+  const precioLista = parseFloat(producto.precio_lista);
+  const precioFinal = precioLista * (1 + items[i].ajuste / 100);
+  const importe = precioFinal * items[i].cantidad;
+  const row = document.getElementById(`item-row-${i}`);
+  if (!row) return;
+  const sliderVal   = row.querySelector('.slider-val');
+  const preview     = row.querySelector('.precio-preview .final');
+  const precioInput = document.getElementById(`precio-unit-${i}`);
+  if (sliderVal)   sliderVal.textContent = (items[i].ajuste >= 0 ? '+' : '') + items[i].ajuste + '%';
+  if (preview)     preview.textContent   = formatMXN(importe);
+  if (precioInput) { precioInput.value = precioFinal.toFixed(2); precioInput.style.borderColor = 'var(--border)'; }
+  calcularTotales();
+}
+
+function cambiarPrecioManual(i, val) {
+  const precio = parseFloat(val);
+  if (isNaN(precio) || precio <= 0) return;
+  const producto = productos.find(p => p.id === items[i].productoId);
+  if (!producto) return;
+
+  const precioLista = parseFloat(producto.precio_lista);
+  let ajuste = ((precio / precioLista) - 1) * 100;
+
+  const fuera = ajuste < items[i].margenMin || ajuste > items[i].margenMax;
+  ajuste = Math.max(items[i].margenMin, Math.min(items[i].margenMax, ajuste));
+  ajuste = Math.round(ajuste * 2) / 2; // granularidad 0.5%
+  items[i].ajuste = ajuste;
+
+  const row = document.getElementById(`item-row-${i}`);
+  if (!row) return;
+  const slider      = row.querySelector('input[type="range"]');
+  const sliderVal   = row.querySelector('.slider-val');
+  const preview     = row.querySelector('.precio-preview .final');
+  const precioInput = document.getElementById(`precio-unit-${i}`);
+
+  const precioReal = precioLista * (1 + ajuste / 100);
+  const importe    = precioReal * items[i].cantidad;
+
+  if (slider)    slider.value           = ajuste;
+  if (sliderVal) sliderVal.textContent  = (ajuste >= 0 ? '+' : '') + ajuste + '%';
+  if (preview)   preview.textContent    = formatMXN(importe);
+  if (precioInput) precioInput.style.borderColor = fuera ? 'var(--danger)' : 'var(--accent)';
+  calcularTotales();
+}
+
+function normalizarPrecio(i) {
+  const input = document.getElementById(`precio-unit-${i}`);
+  if (!input) return;
+  const producto = productos.find(p => p.id === items[i].productoId);
+  if (!producto) return;
+  const precioFinal = parseFloat(producto.precio_lista) * (1 + items[i].ajuste / 100);
+  input.value = precioFinal.toFixed(2);
+  input.style.borderColor = 'var(--border)';
+}
+
+function quitarItem(i) {
+  items.splice(i, 1);
+  renderItems();
+}
+
+function calcularTotales() {
+  let subtotal = 0;
+  items.forEach(item => {
+    const producto = productos.find(p => p.id === item.productoId);
+    if (!producto) return;
+    const precioFinal = parseFloat(producto.precio_lista) * (1 + item.ajuste / 100);
+    subtotal += precioFinal * item.cantidad;
+  });
+  const iva = subtotal * 0.16;
+  const total = subtotal + iva;
+  document.getElementById('r-subtotal').textContent = formatMXN(subtotal);
+  document.getElementById('r-iva').textContent = formatMXN(iva);
+  document.getElementById('r-total').textContent = formatMXN(total);
+}
+
+// ─── Generar cotización ───────────────────────────────────
+async function generarCotizacion() {
+  if (!clienteId) { showAlert('Selecciona un cliente'); return; }
+  const itemsValidos = items.filter(i => i.productoId);
+  if (!itemsValidos.length) { showAlert('Agrega al menos un producto'); return; }
+
+  const btn = document.getElementById('btn-generar');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Generando...';
+
+  try {
+    const body = {
+      cliente_id: clienteId,
+      notas: document.getElementById('f-notas').value.trim() || null,
+      items: itemsValidos.map(i => ({
+        producto_id: i.productoId,
+        cantidad: i.cantidad,
+        porcentaje_ajuste: i.ajuste,
+      })),
+    };
+    const cot = await apiFetch('/cotizaciones/', { method: 'POST', body: JSON.stringify(body) });
+    showAlert(`Cotización ${cot.numero_cotizacion} creada`, 'success');
+    await descargarPDF(cot.id, cot.numero_cotizacion);
+    showPanel('lista');
+  } catch (e) {
+    showAlert(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Generar cotización';
+  }
+}
+
+// ─── PDF ──────────────────────────────────────────────────
+async function descargarPDF(id, numero) {
+  try {
+    const res = await fetch(`${API_BASE}${API_PATH}/cotizaciones/${id}/pdf`, {
+      headers: { 'Authorization': `Bearer ${getToken()}` }
+    });
+    if (!res.ok) throw new Error('Error al generar PDF');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${numero}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+// ─── Modal estado ─────────────────────────────────────────
+function openModalEstado(id, estadoActual) {
+  estadoEditId = id;
+  document.getElementById('f-estado').value = estadoActual;
+  document.getElementById('modal-estado').classList.add('open');
+}
+
+function closeModalEstado() {
+  document.getElementById('modal-estado').classList.remove('open');
+  document.getElementById('modal-estado-alert').classList.add('hidden');
+  estadoEditId = null;
+}
+
+async function guardarEstado() {
+  const btn = document.getElementById('btn-guardar-estado');
+  const alertEl = document.getElementById('modal-estado-alert');
+  alertEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try {
+    await apiFetch(`/cotizaciones/${estadoEditId}/estado`, {
+      method: 'PATCH',
+      body: JSON.stringify({ estado: document.getElementById('f-estado').value }),
+    });
+    closeModalEstado();
+    await init();
+    showAlert('Estado actualizado', 'success');
+  } catch (e) {
+    alertEl.textContent = e.message;
+    alertEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar';
+  }
+}
+
+// ─── Modal cliente rápido ─────────────────────────────────
+function openModalCliente() {
+  ['nc-nombre','nc-telefono','nc-email'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('modal-cliente').classList.add('open');
+}
+
+function closeModalCliente() {
+  document.getElementById('modal-cliente').classList.remove('open');
+}
+
+async function guardarCliente() {
+  const nombre = document.getElementById('nc-nombre').value.trim();
+  if (!nombre) {
+    showAlert('El nombre es requerido', 'danger', 'modal-cliente-alert');
+    return;
+  }
+  try {
+    const c = await apiFetch('/clientes/', {
+      method: 'POST',
+      body: JSON.stringify({
+        nombre_razon_social: nombre,
+        telefono: document.getElementById('nc-telefono').value.trim() || null,
+        email: document.getElementById('nc-email').value.trim() || null,
+      }),
+    });
+    clientes.push(c);
+    seleccionarCliente(c.id);
+    closeModalCliente();
+  } catch (e) {
+    showAlert(e.message, 'danger', 'modal-cliente-alert');
+  }
+}
+
+// Cerrar dropdowns al hacer click afuera
+document.addEventListener('click', e => {
+  if (!e.target.closest('#buscar-cliente') && !e.target.closest('#cliente-dropdown')) {
+    const dd = document.getElementById('cliente-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+  if (!e.target.closest('[id^="prod-search-"]') && !e.target.closest('[id^="prod-dd-"]')) {
+    document.querySelectorAll('[id^="prod-dd-"]').forEach(el => el.style.display = 'none');
+  }
+});
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+python-dotenv
+bcrypt
+python-jose[cryptography]
+pydantic[email]
+weasyprint
+jinja2
+python-multipart
+pydantic-settings
+openpyxl
