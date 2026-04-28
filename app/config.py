@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     IVA_PORCENTAJE: float = 16.0
 
+    # Orígenes permitidos en CORS, separados por coma.
+    # En Railway ponlo como: https://tu-app.railway.app
+    ALLOWED_ORIGINS: str = "*"
+
     SUPABASE_URL: Optional[str] = None
     SUPABASE_S3_ENDPOINT: Optional[str] = None
     SUPABASE_ACCESS_KEY_ID: Optional[str] = None

@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 # ---------- Auth ----------
@@ -20,20 +20,20 @@ class TokenResponse(BaseModel):
 
 # ---------- Usuario ----------
 class UsuarioCreate(BaseModel):
-    nombre: str
+    nombre: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
-    password: str
-    rol: str = "vendedor"
-    margen_min: float = -10.0
-    margen_max: float = 10.0
+    password: str = Field(..., min_length=6, max_length=100)
+    rol: str = Field("vendedor", pattern="^(admin|vendedor)$")
+    margen_min: float = Field(-10.0, ge=-100, le=0)
+    margen_max: float = Field(10.0, ge=0, le=100)
 
 class UsuarioUpdate(BaseModel):
-    nombre: Optional[str] = None
+    nombre: Optional[str] = Field(None, min_length=1, max_length=100)
     email: Optional[EmailStr] = None
-    password: Optional[str] = None
-    rol: Optional[str] = None
-    margen_min: Optional[float] = None
-    margen_max: Optional[float] = None
+    password: Optional[str] = Field(None, min_length=6, max_length=100)
+    rol: Optional[str] = Field(None, pattern="^(admin|vendedor)$")
+    margen_min: Optional[float] = Field(None, ge=-100, le=0)
+    margen_max: Optional[float] = Field(None, ge=0, le=100)
     activo: Optional[bool] = None
 
 class UsuarioOut(BaseModel):
@@ -51,14 +51,14 @@ class UsuarioOut(BaseModel):
 
 # ---------- Cliente ----------
 class ClienteCreate(BaseModel):
-    nombre_razon_social: str
-    telefono: Optional[str] = None
-    email: Optional[str] = None
+    nombre_razon_social: str = Field(..., min_length=1, max_length=200)
+    telefono: Optional[str] = Field(None, max_length=30)
+    email: Optional[str] = Field(None, max_length=150)
 
 class ClienteUpdate(BaseModel):
-    nombre_razon_social: Optional[str] = None
-    telefono: Optional[str] = None
-    email: Optional[str] = None
+    nombre_razon_social: Optional[str] = Field(None, min_length=1, max_length=200)
+    telefono: Optional[str] = Field(None, max_length=30)
+    email: Optional[str] = Field(None, max_length=150)
 
 class ClienteOut(BaseModel):
     id: UUID
@@ -72,18 +72,18 @@ class ClienteOut(BaseModel):
 
 # ---------- Producto ----------
 class ProductoCreate(BaseModel):
-    marca: str
-    equipo: str
-    modelo: str
-    descripcion: Optional[str] = None
-    precio_lista: float
+    marca: str = Field(..., min_length=1, max_length=100)
+    equipo: str = Field(..., min_length=1, max_length=100)
+    modelo: str = Field(..., min_length=1, max_length=100)
+    descripcion: Optional[str] = Field(None, max_length=2000)
+    precio_lista: float = Field(..., gt=0, lt=10_000_000)
 
 class ProductoUpdate(BaseModel):
-    marca: Optional[str] = None
-    equipo: Optional[str] = None
-    modelo: Optional[str] = None
-    descripcion: Optional[str] = None
-    precio_lista: Optional[float] = None
+    marca: Optional[str] = Field(None, min_length=1, max_length=100)
+    equipo: Optional[str] = Field(None, min_length=1, max_length=100)
+    modelo: Optional[str] = Field(None, min_length=1, max_length=100)
+    descripcion: Optional[str] = Field(None, max_length=2000)
+    precio_lista: Optional[float] = Field(None, gt=0, lt=10_000_000)
     activo: Optional[bool] = None
 
 class ProductoImagenOut(BaseModel):
