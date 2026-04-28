@@ -41,6 +41,18 @@ class Cliente(Base):
     cotizaciones = relationship("Cotizacion", back_populates="cliente")
 
 
+class ProductoImagen(Base):
+    __tablename__ = "producto_imagenes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id", ondelete="CASCADE"), nullable=False)
+    url = Column(Text, nullable=False)
+    orden = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+
+    producto = relationship("Producto", back_populates="imagenes")
+
+
 class Producto(Base):
     __tablename__ = "productos"
 
@@ -50,8 +62,12 @@ class Producto(Base):
     modelo = Column(String(100), nullable=False)
     descripcion = Column(Text)
     precio_lista = Column(Numeric(12, 2), nullable=False)
+    imagen_url = Column(Text)
     activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=now_utc)
+
+    imagenes = relationship("ProductoImagen", back_populates="producto",
+                            order_by=ProductoImagen.orden, cascade="all, delete-orphan")
 
 
 class Cotizacion(Base):

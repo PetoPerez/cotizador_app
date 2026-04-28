@@ -86,6 +86,13 @@ class ProductoUpdate(BaseModel):
     precio_lista: Optional[float] = None
     activo: Optional[bool] = None
 
+class ProductoImagenOut(BaseModel):
+    id: UUID
+    url: str
+    orden: int
+
+    model_config = {"from_attributes": True}
+
 class ProductoOut(BaseModel):
     id: UUID
     marca: str
@@ -93,6 +100,8 @@ class ProductoOut(BaseModel):
     modelo: str
     descripcion: Optional[str]
     precio_lista: float
+    imagen_url: Optional[str] = None
+    imagenes: List[ProductoImagenOut] = []
     activo: bool
 
     model_config = {"from_attributes": True}

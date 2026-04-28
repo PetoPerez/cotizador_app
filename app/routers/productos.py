@@ -1,11 +1,13 @@
 import io
+import uuid
 import openpyxl
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app import schemas
 from app.security import get_current_user, require_admin
 from app import models
+from app.services.storage_service import upload_image, delete_image, key_from_url
 
 router = APIRouter(prefix="/productos", tags=["productos"])
 
@@ -24,7 +26,9 @@ _COL_MAP = {
 
 @router.get("/", response_model=list[schemas.ProductoOut])
 def listar(q: str = None, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    query = db.query(models.Producto).filter(models.Producto.activo == True)
+    query = (db.query(models.Producto)
+               .options(selectinload(models.Producto.imagenes))
+               .filter(models.Producto.activo == True))
     if q:
         query = query.filter(
             models.Producto.modelo.ilike(f"%{q}%") |
@@ -139,6 +143,68 @@ def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_
     db.commit()
     db.refresh(producto)
     return producto
+
+
+@router.post("/{id}/imagen", response_model=schemas.ProductoOut)
+async def subir_imagen(
+    id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    producto = db.query(models.Producto).filter(models.Producto.id == id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(status_code=400, detail="Solo se aceptan archivos de imagen")
+
+    ext = (file.filename or "img").rsplit(".", 1)[-1].lower()
+    imagen_id = str(uuid.uuid4())
+    key = f"productos/{id}/{imagen_id}.{ext}"
+    content = await file.read()
+
+    try:
+        url = upload_image(content, key, file.content_type or "image/jpeg")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al subir imagen: {e}")
+
+    orden = db.query(models.ProductoImagen).filter(models.ProductoImagen.producto_id == id).count()
+    db.add(models.ProductoImagen(producto_id=id, url=url, orden=orden))
+    if orden == 0:
+        producto.imagen_url = url
+    db.commit()
+    db.refresh(producto)
+    return producto
+
+
+@router.delete("/{id}/imagen/{imagen_id}")
+def eliminar_imagen(
+    id: str,
+    imagen_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    imagen = db.query(models.ProductoImagen).filter(
+        models.ProductoImagen.id == imagen_id,
+        models.ProductoImagen.producto_id == id,
+    ).first()
+    if not imagen:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    try:
+        delete_image(key_from_url(imagen.url))
+    except Exception:
+        pass
+
+    db.delete(imagen)
+
+    producto = db.query(models.Producto).filter(models.Producto.id == id).first()
+    restantes = (db.query(models.ProductoImagen)
+                 .filter(models.ProductoImagen.producto_id == id)
+                 .order_by(models.ProductoImagen.orden).all())
+    producto.imagen_url = restantes[0].url if restantes else None
+    db.commit()
+    return {"detail": "Imagen eliminada"}
 
 
 @router.delete("/{id}")

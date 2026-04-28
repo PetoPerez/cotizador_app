@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import text
 import io
 from app.database import get_db
@@ -20,9 +20,17 @@ def _siguiente_numero(db: Session) -> str:
     return f"COT-{año}-{str(result).zfill(5)}"
 
 
+def _cot_options():
+    return [
+        joinedload(models.Cotizacion.cliente),
+        joinedload(models.Cotizacion.vendedor),
+        selectinload(models.Cotizacion.items).joinedload(models.CotizacionItem.producto).selectinload(models.Producto.imagenes),
+    ]
+
+
 @router.get("/", response_model=list[schemas.CotizacionOut])
 def listar(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
-    query = db.query(models.Cotizacion)
+    query = db.query(models.Cotizacion).options(*_cot_options())
     if current_user.rol != "admin":
         query = query.filter(models.Cotizacion.vendedor_id == current_user.id)
     return query.order_by(models.Cotizacion.created_at.desc()).all()
@@ -30,7 +38,9 @@ def listar(db: Session = Depends(get_db), current_user: models.Usuario = Depends
 
 @router.get("/{id}", response_model=schemas.CotizacionOut)
 def obtener(id: str, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
-    cot = db.query(models.Cotizacion).filter(models.Cotizacion.id == id).first()
+    cot = (db.query(models.Cotizacion)
+             .options(*_cot_options())
+             .filter(models.Cotizacion.id == id).first())
     if not cot:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
     if current_user.rol != "admin" and str(cot.vendedor_id) != str(current_user.id):

@@ -17,6 +17,16 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
     with engine.connect() as conn:
         conn.execute(text("CREATE SEQUENCE IF NOT EXISTS cotizacion_seq START 1"))
+        conn.execute(text("ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_url TEXT"))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS producto_imagenes (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                producto_id UUID NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+                url TEXT NOT NULL,
+                orden INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
         conn.commit()
 
 app.add_middleware(

@@ -43,6 +43,7 @@
         <table>
           <thead>
             <tr>
+              <th style="width:56px">Img</th>
               <th>Marca</th>
               <th>Equipo</th>
               <th>Modelo</th>
@@ -53,12 +54,28 @@
             </tr>
           </thead>
           <tbody id="tabla-body">
-            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+            <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </main>
+</div>
+
+<!-- Modal galería de imágenes -->
+<div class="modal-overlay" id="modal-imagenes">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header">
+      <div class="modal-title" id="galeria-titulo">Imágenes</div>
+      <button class="modal-close" onclick="closeGaleria()">×</button>
+    </div>
+    <div id="galeria-alert" class="alert hidden"></div>
+    <div id="galeria-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
+    <label class="btn btn-secondary" style="cursor:pointer;justify-content:center">
+      + Agregar imagen
+      <input type="file" id="galeria-input" accept="image/*" style="display:none" onchange="galeriaSubir(this)">
+    </label>
+  </div>
 </div>
 
 <!-- Modal -->
@@ -136,15 +153,30 @@ function filtrar() {
 function renderTabla(data) {
   const tbody = document.getElementById('tabla-body');
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Sin productos</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">Sin productos</td></tr>`;
     return;
   }
   tbody.innerHTML = data.map(p => `
     <tr>
+      <td style="text-align:center">
+        ${p.imagenes && p.imagenes.length
+          ? `<div style="position:relative;display:inline-block;cursor:pointer" onclick="openGaleria('${p.id}')">
+               <img src="${p.imagenes[0].url}" alt="img"
+                    style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">
+               ${p.imagenes.length > 1
+                 ? `<span style="position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;
+                                 border-radius:50%;width:16px;height:16px;font-size:10px;font-weight:700;
+                                 display:flex;align-items:center;justify-content:center">${p.imagenes.length}</span>`
+                 : ''}
+             </div>`
+          : `<button class="btn btn-secondary btn-sm" onclick="openGaleria('${p.id}')"
+               style="padding:6px 8px;font-size:16px;line-height:1" title="Agregar imagen">📷</button>`
+        }
+      </td>
       <td><strong style="color:var(--text)">${p.marca}</strong></td>
       <td>${p.equipo}</td>
       <td><span style="font-family:'DM Mono',monospace;font-size:12px">${p.modelo}</span></td>
-      <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.descripcion || '—'}</td>
+      <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.descripcion || '—'}</td>
       <td><strong style="color:var(--accent2)">${formatMXN(p.precio_lista)}</strong></td>
       <td>${p.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-red">Inactivo</span>'}</td>
       <td>
@@ -157,6 +189,89 @@ function renderTabla(data) {
       </td>
     </tr>
   `).join('');
+}
+
+let galeriaProductoId = null;
+
+function openGaleria(id) {
+  galeriaProductoId = id;
+  const p = productos.find(x => x.id === id);
+  document.getElementById('galeria-titulo').textContent =
+    p ? `Imágenes — ${p.marca} ${p.modelo}` : 'Imágenes';
+  document.getElementById('galeria-alert').classList.add('hidden');
+  renderGaleria(p ? (p.imagenes || []) : []);
+  document.getElementById('modal-imagenes').classList.add('open');
+}
+
+function closeGaleria() {
+  document.getElementById('modal-imagenes').classList.remove('open');
+  galeriaProductoId = null;
+}
+
+function renderGaleria(imagenes) {
+  const grid = document.getElementById('galeria-grid');
+  if (!imagenes.length) {
+    grid.innerHTML = `<p style="color:var(--text3);font-size:13px;grid-column:1/-1">Sin imágenes aún</p>`;
+    return;
+  }
+  grid.innerHTML = imagenes.map(img => `
+    <div style="position:relative">
+      <img src="${img.url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+      <button onclick="galeriaEliminar('${img.id}')"
+        style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);border:none;border-radius:50%;
+               width:22px;height:22px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+        ×
+      </button>
+    </div>
+  `).join('');
+}
+
+async function galeriaSubir(input) {
+  const file = input.files[0];
+  if (!file || !galeriaProductoId) return;
+  input.value = '';
+
+  const alertEl = document.getElementById('galeria-alert');
+  alertEl.classList.add('hidden');
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch(`${API_BASE}${API_PATH}/productos/${galeriaProductoId}/imagen`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+    await cargar();
+    const p = productos.find(x => x.id === galeriaProductoId);
+    renderGaleria(p ? (p.imagenes || []) : []);
+  } catch (e) {
+    alertEl.textContent = `Error al subir: ${e.message}`;
+    alertEl.classList.remove('hidden');
+  }
+}
+
+async function galeriaEliminar(imagenId) {
+  if (!galeriaProductoId) return;
+  const alertEl = document.getElementById('galeria-alert');
+  alertEl.classList.add('hidden');
+  try {
+    const res = await fetch(`${API_BASE}${API_PATH}/productos/${galeriaProductoId}/imagen/${imagenId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+    await cargar();
+    const p = productos.find(x => x.id === galeriaProductoId);
+    renderGaleria(p ? (p.imagenes || []) : []);
+  } catch (e) {
+    alertEl.textContent = `Error al eliminar: ${e.message}`;
+    alertEl.classList.remove('hidden');
+  }
 }
 
 function openModal(id = null) {
