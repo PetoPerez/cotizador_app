@@ -6,9 +6,9 @@
 <style>
 @page {
   size: A4;
-  margin: 0;
-  /* evitar contenido bajo el footer fijo */
-  @bottom-center { content: none; }
+  /* top margin = alto del encabezado fijo (~63px) + holgura;
+     bottom margin = alto del footer fijo (~40px) + holgura */
+  margin: 68px 0 52px 0;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,6 +37,21 @@ body {
   z-index: 0;
   pointer-events: none;
 }
+
+/* ─────────────────────────────────────────
+   ENCABEZADO FIJO — todas las páginas
+   ───────────────────────────────────────── */
+.page-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: #fff;
+  padding: 8px 28px 5px;
+  border-bottom: 4px solid #c0392b;
+}
+.page-header .hdr-table { margin-bottom: 0; }
+.page-header .logo-clm  { font-size: 38px; letter-spacing: 4px; }
+.page-header .logo-bar  { max-width: 112px; margin-top: 3px; }
 
 /* ─────────────────────────────────────────
    FOOTER — todas las páginas
@@ -68,8 +83,8 @@ body {
 .wrap {
   position: relative;
   z-index: 1;
-  /* 72px = altura aprox. del footer */
-  padding: 18px 28px 76px 28px;
+  /* @page margin maneja el espacio para encabezado y footer en todas las páginas */
+  padding: 12px 28px 12px 28px;
 }
 
 /* ─────────────────────────────────────────
@@ -227,15 +242,8 @@ body {
 <!-- Marca de agua -->
 <div class="watermark">{{ empresa.marca }}</div>
 
-<!-- Footer (todas las páginas) -->
-<div class="page-footer">
-  {{ empresa.nombre }}
-  <div class="sub">{{ empresa.direccion }} &nbsp;·&nbsp; Tel. {{ empresa.telefono }}</div>
-</div>
-
-<div class="wrap">
-
-  <!-- ── CABECERA ── -->
+<!-- Encabezado fijo (todas las páginas) -->
+<div class="page-header">
   <table class="hdr-table">
     <tr>
       <td class="hdr-logo-cell">
@@ -243,11 +251,11 @@ body {
         <span class="logo-bar"></span>
       </td>
       <td class="hdr-dots-cell">
-        {% for r in range(5) %}
+        {% for r in range(4) %}
         <span class="dot-row">
-          {% for c in range(10) %}
-          {% set sz = (4 + c * 0.6 + r * 0.25) | round | int %}
-          {% set op = [0.08 + c * 0.082 + r * 0.018, 1.0] | min %}
+          {% for c in range(8) %}
+          {% set sz = (3 + c * 0.75 + r * 0.2) | round | int %}
+          {% set op = [0.08 + c * 0.108 + r * 0.018, 1.0] | min %}
           <span class="dot" style="width:{{ sz }}px;height:{{ sz }}px;opacity:{{ '%.2f'|format(op) }}"></span>
           {% endfor %}
         </span>
@@ -255,6 +263,15 @@ body {
       </td>
     </tr>
   </table>
+</div>
+
+<!-- Footer (todas las páginas) -->
+<div class="page-footer">
+  {{ empresa.nombre }}
+  <div class="sub">{{ empresa.direccion }} &nbsp;·&nbsp; Tel. {{ empresa.telefono }}</div>
+</div>
+
+<div class="wrap">
 
   <!-- ── NÚMERO + FECHA ── -->
   <table class="meta-table">
