@@ -6,9 +6,9 @@
 <style>
 @page {
   size: A4;
-  /* top margin = alto del encabezado fijo (~63px) + holgura;
-     bottom margin = alto del footer fijo (~40px) + holgura */
-  margin: 68px 0 52px 0;
+  /* top: encabezado fijo (~65px) + espacio de respiro (~22px) = 87px
+     bottom: footer fijo (~40px) + holgura */
+  margin: 87px 0 54px 0;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -83,8 +83,8 @@ body {
 .wrap {
   position: relative;
   z-index: 1;
-  /* @page margin maneja el espacio para encabezado y footer en todas las páginas */
-  padding: 12px 28px 12px 28px;
+  /* sin padding-top: el margin del @page ya da el espacio uniforme en todas las páginas */
+  padding: 0 28px 12px 28px;
 }
 
 /* ─────────────────────────────────────────
