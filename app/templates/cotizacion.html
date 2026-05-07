@@ -2,94 +2,395 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<!-- Impact/condensed bold italic para logo y watermark -->
 <style>
-  body { font-family: Arial, sans-serif; font-size: 11px; color: #222; margin: 0; padding: 24px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-  .empresa { font-size: 18px; font-weight: bold; color: #c0392b; }
-  .numero { font-size: 13px; font-weight: bold; }
-  h3 { margin: 16px 0 6px; font-size: 12px; text-transform: uppercase; color: #555; }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  th { background: #c0392b; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }
-  td { padding: 5px 8px; border-bottom: 1px solid #eee; }
-  tr:nth-child(even) td { background: #f9f9f9; }
-  .totales { margin-top: 16px; text-align: right; }
-  .totales table { width: 260px; margin-left: auto; }
-  .totales td { border: none; padding: 3px 8px; }
-  .total-final td { font-weight: bold; font-size: 13px; border-top: 2px solid #c0392b; }
-  .clausulas { margin-top: 24px; font-size: 9px; color: #555; line-height: 1.5; }
-  .footer { margin-top: 30px; text-align: center; font-size: 9px; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
+@page {
+  size: A4;
+  margin: 0;
+  /* evitar contenido bajo el footer fijo */
+  @bottom-center { content: none; }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+  color: #222;
+}
+
+/* ─────────────────────────────────────────
+   MARCA DE AGUA — fondo, todas las páginas
+   ───────────────────────────────────────── */
+.watermark {
+  position: fixed;
+  top: 42%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: Impact, 'Arial Black', Arial, sans-serif;
+  font-style: italic;
+  font-size: 200px;
+  font-weight: 900;
+  letter-spacing: 12px;
+  color: rgba(192, 57, 43, 0.065);
+  white-space: nowrap;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────
+   FOOTER — todas las páginas
+   ───────────────────────────────────────── */
+.page-footer {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 100;
+  border-top: 4px solid #c0392b;
+  background: #fff;
+  text-align: center;
+  padding: 5px 28px 8px;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.4px;
+}
+.page-footer .sub {
+  font-size: 8px;
+  font-weight: normal;
+  color: #444;
+  margin-top: 1px;
+  letter-spacing: 0;
+}
+
+/* ─────────────────────────────────────────
+   CONTENIDO PRINCIPAL
+   ───────────────────────────────────────── */
+.wrap {
+  position: relative;
+  z-index: 1;
+  /* 72px = altura aprox. del footer */
+  padding: 18px 28px 76px 28px;
+}
+
+/* ─────────────────────────────────────────
+   CABECERA: LOGO + DOTS
+   ───────────────────────────────────────── */
+.hdr-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.hdr-logo-cell  { vertical-align: middle; width: 180px; }
+.hdr-dots-cell  { vertical-align: top; text-align: right; }
+
+/* Logo — misma tipografía que el PDF */
+.logo-clm {
+  font-family: Impact, 'Arial Black', Arial, sans-serif;
+  font-style: italic;
+  font-size: 52px;
+  font-weight: 900;
+  color: #c0392b;
+  letter-spacing: 5px;
+  line-height: 1;
+}
+.logo-bar {
+  display: block;
+  height: 5px;
+  background: #c0392b;
+  margin-top: 4px;
+  width: 100%;
+  max-width: 155px;
+}
+
+/* Grilla de puntos — tamaño y opacidad crecen hacia la derecha */
+.dot-row { display: block; white-space: nowrap; margin-bottom: 2px; }
+.dot {
+  display: inline-block;
+  border-radius: 50%;
+  background: #c0392b;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
+/* ─────────────────────────────────────────
+   META: NÚMERO + FECHA
+   ───────────────────────────────────────── */
+.meta-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.meta-left  { vertical-align: top; }
+.meta-right { vertical-align: top; text-align: right; font-style: italic; font-size: 10px; }
+.cot-number { font-size: 13px; font-weight: bold; }
+.cot-formato { font-size: 8px; color: #777; margin-top: 2px; }
+
+/* ─────────────────────────────────────────
+   CLIENTE
+   ───────────────────────────────────────── */
+.cli-nombre { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+.cli-det    { font-size: 9.5px; line-height: 1.8; }
+.greeting   { color: #c0392b; font-weight: bold; font-size: 11px; margin: 10px 0 4px; }
+.intro      { font-size: 9.5px; line-height: 1.65; margin-bottom: 14px; }
+
+/* ─────────────────────────────────────────
+   SECCIÓN DE PRODUCTO
+   Salto de página: si no cabe completo, se
+   mueve al inicio de la página siguiente.
+   ───────────────────────────────────────── */
+.prod-section {
+  margin-bottom: 20px;
+  /* CSS2 legacy */
+  page-break-inside: avoid;
+  /* CSS3 moderno — WeasyPrint 53+ */
+  break-inside: avoid;
+}
+
+/* La tabla de datos nunca se separa de las características */
+.prod-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+  page-break-after: avoid;
+  break-after: avoid;
+}
+.prod-table th {
+  background: #c0392b; color: #fff;
+  padding: 5px 12px; text-align: center;
+  font-size: 10px; font-weight: bold;
+}
+.prod-table td {
+  padding: 5px 12px; text-align: center;
+  border: 1px solid #ddd; font-size: 10px;
+}
+
+/* Características + imagen (float derecho) */
+.char-wrap {
+  overflow: hidden;
+  /* Si la descripción es muy larga, al menos evitar
+     que el inicio se separe de la tabla */
+  page-break-before: avoid;
+  break-before: avoid;
+}
+.prod-img-float {
+  float: right;
+  margin: 0 0 6px 14px;
+  width: 178px;
+  text-align: center;
+}
+.prod-img-float img {
+  max-width: 176px;
+  max-height: 148px;
+  object-fit: contain;
+  border: 1px solid #eee;
+}
+.char-title { font-weight: bold; font-size: 10px; margin-bottom: 4px; display: block; }
+.char-equip { font-weight: bold; font-size: 9.5px; margin-bottom: 5px; display: block; }
+.char-line  {
+  font-size: 9px; line-height: 1.8; color: #333; display: block;
+  /* cada viñeta tampoco se separa a mitad */
+  orphans: 2; widows: 2;
+}
+
+/* ─────────────────────────────────────────
+   PRESUPUESTO FINAL
+   ───────────────────────────────────────── */
+.presup {
+  margin-top: 18px; text-align: right;
+  page-break-inside: avoid; break-inside: avoid;
+}
+.presup-title { color: #c0392b; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+.presup-table { margin-left: auto; border-collapse: collapse; min-width: 260px; }
+.presup-table td { padding: 3px 12px; font-size: 10px; text-align: right; }
+.presup-table .total-row td {
+  font-weight: bold; font-size: 15px; color: #c0392b;
+  border-top: 2px solid #c0392b; padding-top: 6px;
+}
+
+.notas { margin-top: 12px; font-size: 9px; font-style: italic; color: #555; }
+
+/* ─────────────────────────────────────────
+   CLÁUSULAS — siempre nueva página
+   ───────────────────────────────────────── */
+.clausulas {
+  page-break-before: always;
+  break-before: page;
+  font-size: 8.5px;
+  line-height: 1.65;
+  color: #333;
+  padding-top: 16px;
+}
+.cl-h2 {
+  font-size: 9.5px; font-weight: bold; color: #c0392b;
+  margin: 9px 0 4px; text-transform: uppercase;
+  page-break-after: avoid; break-after: avoid;
+}
+.cl-p  { margin-bottom: 3px; orphans: 3; widows: 3; }
+.cl-bold { font-weight: bold; }
+.firma { margin-top: 28px; text-align: center; display: inline-block; float: right; font-size: 9.5px; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div>
-    <div class="empresa">Tu Empresa S.A. de C.V.</div>
-    <div>tu@empresa.com · (33) 0000-0000</div>
-  </div>
-  <div style="text-align:right">
-    <div class="numero">COTIZACIÓN # {{ cot.numero_cotizacion }}</div>
-    <div>Fecha: {{ cot.fecha.strftime('%d/%m/%Y') }}</div>
-    <div>Vigencia: {{ cot.vigencia.strftime('%d/%m/%Y') if cot.vigencia else '—' }}</div>
-  </div>
+<!-- Marca de agua -->
+<div class="watermark">{{ empresa.marca }}</div>
+
+<!-- Footer (todas las páginas) -->
+<div class="page-footer">
+  {{ empresa.nombre }}
+  <div class="sub">{{ empresa.direccion }} &nbsp;·&nbsp; Tel. {{ empresa.telefono }}</div>
 </div>
 
-<h3>Cliente</h3>
-<table>
-  <tr><td><strong>{{ cot.cliente.nombre_razon_social }}</strong></td></tr>
-  {% if cot.cliente.telefono %}<tr><td>Tel: {{ cot.cliente.telefono }}</td></tr>{% endif %}
-  {% if cot.cliente.email %}<tr><td>{{ cot.cliente.email }}</td></tr>{% endif %}
-</table>
+<div class="wrap">
 
-<h3>Productos cotizados</h3>
-<table>
-  <thead>
+  <!-- ── CABECERA ── -->
+  <table class="hdr-table">
     <tr>
-      <th>Marca</th>
-      <th>Equipo</th>
-      <th>Modelo</th>
-      <th>Descripción</th>
-      <th style="text-align:right">Cant.</th>
-      <th style="text-align:right">Precio unit.</th>
-      <th style="text-align:right">Importe</th>
+      <td class="hdr-logo-cell">
+        <div class="logo-clm">{{ empresa.marca }}</div>
+        <span class="logo-bar"></span>
+      </td>
+      <td class="hdr-dots-cell">
+        {% for r in range(5) %}
+        <span class="dot-row">
+          {% for c in range(10) %}
+          {% set sz = (4 + c * 0.6 + r * 0.25) | round | int %}
+          {% set op = [0.08 + c * 0.082 + r * 0.018, 1.0] | min %}
+          <span class="dot" style="width:{{ sz }}px;height:{{ sz }}px;opacity:{{ '%.2f'|format(op) }}"></span>
+          {% endfor %}
+        </span>
+        {% endfor %}
+      </td>
     </tr>
-  </thead>
-  <tbody>
-    {% for item in cot.items %}
-    <tr>
-      <td>{{ item.producto.marca }}</td>
-      <td>{{ item.producto.equipo }}</td>
-      <td>{{ item.producto.modelo }}</td>
-      <td>{{ item.producto.descripcion or '—' }}</td>
-      <td style="text-align:right">{{ item.cantidad }}</td>
-      <td style="text-align:right">${{ "%.2f"|format(item.precio_final) }}</td>
-      <td style="text-align:right">${{ "%.2f"|format(item.importe) }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<div class="totales">
-  <table>
-    <tr><td>Subtotal</td><td style="text-align:right">${{ "%.2f"|format(cot.subtotal) }} MX</td></tr>
-    <tr><td>IVA (16%)</td><td style="text-align:right">${{ "%.2f"|format(cot.iva) }} MX</td></tr>
-    <tr class="total-final"><td>Total</td><td style="text-align:right">${{ "%.2f"|format(cot.total) }} MX</td></tr>
   </table>
+
+  <!-- ── NÚMERO + FECHA ── -->
+  <table class="meta-table">
+    <tr>
+      <td class="meta-left">
+        <div class="cot-number">COTIZACION # &nbsp; {{ cot.numero_cotizacion }}</div>
+        <div class="cot-formato">FORMATO &nbsp; 2-VTA-001-F02</div>
+      </td>
+      <td class="meta-right">{{ fecha_es(cot.fecha) }}</td>
+    </tr>
+  </table>
+
+  <!-- ── CLIENTE ── -->
+  <div class="cli-nombre">{{ cot.cliente.nombre_razon_social }}</div>
+  <div class="cli-det">
+    {% if cot.cliente.telefono %}{{ cot.cliente.telefono }}<br>{% endif %}
+    {% if cot.cliente.email %}{{ cot.cliente.email }}{% endif %}
+  </div>
+
+  <div class="greeting">{{ cot.cliente.nombre_razon_social }}</div>
+  <div class="intro">
+    En atención a su solicitud, le presento esta cotización de los equipos y productos que nos ha
+    requerido; anexándole, además, fichas técnicas de cada uno de los equipos para que tenga una
+    mayor información de los mismos.
+  </div>
+
+  <!-- ── PRODUCTOS ── -->
+  {% for item in cot.items %}
+  <div class="prod-section">
+
+    <table class="prod-table">
+      <thead>
+        <tr>
+          <th>Cantidad</th><th>Clave</th><th>Precio</th><th>Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ item.cantidad }}</td>
+          <td>{{ item.producto.modelo }}</td>
+          <td>${{ "{:,.2f}".format(item.precio_final) }} MX</td>
+          <td>${{ "{:,.2f}".format(item.importe) }} MX</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="char-wrap">
+      {% set img = (item.producto.imagenes[0].url if item.producto.imagenes else item.producto.imagen_url) %}
+      {% if img %}
+      <div class="prod-img-float">
+        <img src="{{ img }}" alt="{{ item.producto.modelo }}">
+      </div>
+      {% endif %}
+
+      <span class="char-title">Caracteristicas:</span>
+      <span class="char-equip">
+        {{ item.producto.marca }} {{ item.producto.equipo -}}
+        {%- if item.producto.descripcion -%}
+          {{ '. ' + item.producto.descripcion.split('\n')[0].strip().lstrip('*').strip() }}
+        {%- endif -%}
+      </span>
+
+      {% if item.producto.descripcion %}
+        {% for linea in item.producto.descripcion.split('\n')[1:] %}
+          {% set l = linea.strip().lstrip('*').strip() %}
+          {% if l %}
+          <span class="char-line">* {{ l }}</span>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+
+  </div>
+  {% endfor %}
+
+  <!-- ── PRESUPUESTO FINAL ── -->
+  <div class="presup">
+    <div class="presup-title">PRESUPUESTO FINAL:</div>
+    <table class="presup-table">
+      <tr><td><span class="cl-bold">Subtotal:</span></td><td>${{ "{:,.2f}".format(cot.subtotal) }} MX</td></tr>
+      <tr><td><span class="cl-bold">IVA:</span></td>      <td>${{ "{:,.2f}".format(cot.iva) }} MX</td></tr>
+      <tr class="total-row"><td>Total:</td>               <td>${{ "{:,.2f}".format(cot.total) }} MX</td></tr>
+    </table>
+  </div>
+
+  {% if cot.notas %}
+  <div class="notas"><span class="cl-bold">Notas:</span> {{ cot.notas }}</div>
+  {% endif %}
+
+  <!-- ── CLÁUSULAS (nueva página) ── -->
+  <div class="clausulas">
+    <div class="cl-p">
+      Contrato de venta que celebran por una parte <span class="cl-bold">{{ empresa.nombre }}</span>
+      a quien en lo sucesivo se le denominará "EL VENDEDOR", por otra parte "EL CLIENTE", cuyo nombre
+      aparece al inicio de este documento, y por último se le denominará "EL FABRICANTE" a la empresa
+      que fabricó los equipos y quien otorga garantías de dichos equipos, sujetándose a las siguientes cláusulas:
+    </div>
+
+    <div class="cl-h2">1. Clausulas</div>
+    <div class="cl-p">1.1 EL VENDEDOR se obliga a entregar los productos descritos al inicio, en un plazo comprendido de (1) a (12) semanas a partir de la fecha del pago total. Los productos se entregarán a EL CLIENTE siete días (7) después de recibir el pago total, si no se ha señalado una fecha específica.</div>
+    <div class="cl-p">1.2 EL VENDEDOR no será responsable de los daños y perjuicios que se originen a EL CLIENTE por incumplimiento de la entrega en el plazo antes mencionado, cuando el retraso resultare de caso fortuito o fuerza mayor.</div>
+    <div class="cl-p">1.3 En situaciones de contingencia graves de salud generalizadas o de desastres naturales, así como nuevas normas de regulación a la importación de bienes que queden fuera de nuestro control, los plazos de entrega podrían verse afectados y se reajustarán los tiempos sin ningún tipo de penalización.</div>
+    <div class="cl-p">1.4 EL VENDEDOR no cuenta con servicio de flete por lo que todos los envíos se realizan a través de una empresa transportista externa; el envío es por cuenta de EL CLIENTE.</div>
+    <div class="cl-p">1.5 EL CLIENTE se obliga a pagar previamente el importe total de los productos descritos. Ningún equipo puede ser entregado sin estar pagado al 100%.</div>
+    <div class="cl-p">1.6 La cotización se entrega en pesos mexicanos (vigencia: 10 días). 1.7 Los precios son más I.V.A.</div>
+    <div class="cl-p">1.8 Se requiere anticipo del 50% al hacer el pedido y el 50% restante antes del embarque. Una vez realizado el pago en un lapso de 48 a 72 horas hábiles su equipo será programado para recolección.</div>
+    <div class="cl-p">1.9 Los pagos con tarjeta de débito o crédito conllevan un incremento del 5% (comisión del proveedor del servicio).</div>
+
+    <div class="cl-h2">2. Garantía</div>
+    <div class="cl-p">EL VENDEDOR es intermediario entre EL CLIENTE y EL FABRICANTE. <span class="cl-bold">Para hacer válida la garantía EL CLIENTE deberá:</span> 2.1 Tener la factura de compra. 2.2 Tener el Certificado de Garantía emitido por EL VENDEDOR. 2.3 La garantía inicia a partir de la fecha de entrega.</div>
+    <div class="cl-p">2.4 La garantía solamente es válida si el equipo es intervenido por el <span class="cl-bold">Personal Técnico Autorizado por EL VENDEDOR</span>. 2.5 La garantía ampara la mano de obra de los primeros 60 días (no incluye viáticos), siempre y cuando la "Puesta en Marcha" sea realizada por personal autorizado.</div>
+    <div class="cl-p">2.6 Las partes eléctricas y electrónicas no tienen garantía por variaciones de voltaje. 2.7 La garantía queda sujeta a las condiciones del FABRICANTE. 2.8 El servicio por garantía no incluye mano de obra ni viáticos.</div>
+    <div class="cl-p"><span class="cl-bold">*El producto pierde garantía cuando:</span> 2.10 Uso en condiciones distintas a las especificadas. 2.11 Daños por anomalías en suministros. 2.12 Daños por siniestro o caso fortuito. 2.13 Retiro de etiqueta de número de serie. 2.14 Daños en transporte. 2.15 Apertura por personal no autorizado. 2.16 Puesta en Marcha no realizada por EL VENDEDOR.</div>
+
+    <div class="cl-h2">3. Servicio Puesta en Marcha</div>
+    <div class="cl-p"><span class="cl-bold">La puesta en marcha consiste en:</span> 3.1 Verificar instalaciones adecuadas. 3.2 Arrancar los equipos por primera vez. 3.3 Programar según especificaciones. 3.4 Capacitar al personal.</div>
+    <div class="cl-p">3.5 <span class="cl-bold">La puesta en marcha no es instalación de equipos.</span> El costo no está incluido en el precio del producto ni los viáticos de los técnicos.</div>
+
+    <div class="cl-h2">4. Instalaciones y Conexiones</div>
+    <div class="cl-p">4.1 Es responsabilidad y costo de EL CLIENTE la correcta instalación eléctrica, de agua, gas, drenaje, ventilación y anclado. La mano de obra no se incluye en trabajos de mantenimiento. 4.2 La "Puesta en Marcha" no está incluida en el precio.</div>
+
+    <div class="cl-h2">5. Término del Contrato</div>
+    <div class="cl-p"><span class="cl-bold">El contrato podrá cancelarse sin responsabilidad si:</span> 5.1 No se ha pagado anticipo. 5.2 Productos descontinuados. 5.3 Productos no corresponden a lo pactado. 5.4 Con anticipo y responsabilidad de EL CLIENTE, EL VENDEDOR podrá retener hasta el 30% del valor como penalización.</div>
+    <div class="cl-p" style="margin-top:7px">
+      Para la interpretación y cumplimiento del presente contrato, <span class="cl-bold">LAS PARTES se someten a las leyes del estado de Jalisco</span> y a sus tribunales competentes. Sólo se reconocerán los pagos efectuados en las cuentas de <span class="cl-bold">{{ empresa.nombre }}</span>.
+    </div>
+
+    <div style="overflow:hidden;margin-top:24px">
+      <div class="firma">
+        Asesor Comercial<br>
+        <span class="cl-bold">{{ cot.vendedor.nombre }}</span><br>
+        {{ empresa.telefono }}
+      </div>
+    </div>
+  </div>
+
 </div>
-
-{% if cot.notas %}
-<h3>Notas</h3>
-<p>{{ cot.notas }}</p>
-{% endif %}
-
-<div class="clausulas">
-  <strong>Condiciones:</strong> Cotización válida por 10 días. Precios en MXN más IVA. 
-  Se requiere 50% de anticipo al confirmar el pedido. Entrega en 1 a 12 semanas según disponibilidad.
-</div>
-
-<div class="footer">
-  Tu Empresa S.A. de C.V. · Guadalajara, Jalisco · (33) 0000-0000
-</div>
-
 </body>
 </html>
