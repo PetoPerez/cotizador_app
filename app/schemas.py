@@ -130,6 +130,7 @@ class CotizacionCreate(BaseModel):
     items: List[CotizacionItemCreate]
     notas: Optional[str] = None
     moneda: str = Field('MXN', pattern='^(MXN|USD)$')
+    tipo_cambio: Optional[float] = None
 
 class CotizacionOut(BaseModel):
     id: UUID

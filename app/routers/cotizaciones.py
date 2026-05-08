@@ -66,7 +66,12 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
-    tc = get_usd_mxn()
+    # Usar tipo_cambio del request si viene, sino obtener de API
+    if data.tipo_cambio is not None:
+        tc = data.tipo_cambio
+    else:
+        tc = get_usd_mxn()
+
     cotizacion = models.Cotizacion(
         numero_cotizacion=_siguiente_numero(db),
         cliente_id=data.cliente_id,
