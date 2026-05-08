@@ -129,6 +129,7 @@ class CotizacionCreate(BaseModel):
     cliente_id: UUID
     items: List[CotizacionItemCreate]
     notas: Optional[str] = None
+    moneda: str = Field('MXN', pattern='^(MXN|USD)$')
 
 class CotizacionOut(BaseModel):
     id: UUID
@@ -140,6 +141,8 @@ class CotizacionOut(BaseModel):
     subtotal: float
     iva: float
     total: float
+    moneda: str
+    tipo_cambio: Optional[float] = None
     fecha: datetime
     vigencia: Optional[datetime]
     items: List[CotizacionItemOut]

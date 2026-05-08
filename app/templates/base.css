@@ -41,6 +41,19 @@ body {
   letter-spacing: -0.3px;
 }
 
+.tc-chip {
+  margin: 0 12px 12px;
+  padding: 7px 12px;
+  background: rgba(79,124,255,0.08);
+  border: 1px solid rgba(79,124,255,0.22);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+
 .sidebar-nav {
   flex: 1;
   display: flex;

@@ -9,9 +9,18 @@ from app import schemas
 from app.security import get_current_user, require_admin
 from app.config import settings
 from app.services.pdf_service import generar_pdf
+from app.services.exchange_rate_service import get_usd_mxn
 from app import models
 
 router = APIRouter(prefix="/cotizaciones", tags=["cotizaciones"])
+
+
+@router.get("/tipo-cambio")
+def tipo_cambio(_=Depends(get_current_user)):
+    rate = get_usd_mxn()
+    if rate is None:
+        raise HTTPException(status_code=503, detail="Tipo de cambio no disponible temporalmente")
+    return {"usd_mxn": round(rate, 4)}
 
 
 def _siguiente_numero(db: Session) -> str:
@@ -57,12 +66,15 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
+    tc = get_usd_mxn()
     cotizacion = models.Cotizacion(
         numero_cotizacion=_siguiente_numero(db),
         cliente_id=data.cliente_id,
         vendedor_id=current_user.id,
         notas=data.notas,
         vigencia=datetime.now(timezone.utc) + timedelta(days=10),
+        moneda=data.moneda,
+        tipo_cambio=round(tc, 4) if tc else None,
     )
     db.add(cotizacion)
     db.flush()

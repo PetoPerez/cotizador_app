@@ -280,7 +280,12 @@ body {
     <tr>
       <td class="meta-left">
         <div class="cot-number">COTIZACION # &nbsp; {{ cot.numero_cotizacion }}</div>
-        <div class="cot-formato">FORMATO &nbsp; 2-VTA-001-F02</div>
+        <div class="cot-formato">FORMATO &nbsp; 2-VTA-001-F02 &nbsp;·&nbsp;
+          Moneda: <strong>{{ moneda }}</strong>
+          {% if moneda == 'USD' and tc > 1 %}
+            &nbsp;·&nbsp; T.C. 1 USD = ${{ "{:,.4f}".format(tc) }} MXN
+          {% endif %}
+        </div>
       </td>
       <td class="meta-right">{{ fecha_es(cot.fecha) }}</td>
     </tr>
@@ -314,8 +319,8 @@ body {
         <tr>
           <td>{{ item.cantidad }}</td>
           <td>{{ item.producto.modelo }}</td>
-          <td>${{ "{:,.2f}".format(item.precio_final) }} MX</td>
-          <td>${{ "{:,.2f}".format(item.importe) }} MX</td>
+          <td>${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}</td>
+          <td>${{ "{:,.2f}".format(float(item.importe) * tc) }} {{ moneda }}</td>
         </tr>
       </tbody>
     </table>
@@ -353,9 +358,9 @@ body {
   <div class="presup">
     <div class="presup-title">PRESUPUESTO FINAL:</div>
     <table class="presup-table">
-      <tr><td><span class="cl-bold">Subtotal:</span></td><td>${{ "{:,.2f}".format(cot.subtotal) }} MX</td></tr>
-      <tr><td><span class="cl-bold">IVA:</span></td>      <td>${{ "{:,.2f}".format(cot.iva) }} MX</td></tr>
-      <tr class="total-row"><td>Total:</td>               <td>${{ "{:,.2f}".format(cot.total) }} MX</td></tr>
+      <tr><td><span class="cl-bold">Subtotal:</span></td><td>${{ "{:,.2f}".format(float(cot.subtotal) * tc) }} {{ moneda }}</td></tr>
+      <tr><td><span class="cl-bold">IVA:</span></td>      <td>${{ "{:,.2f}".format(float(cot.iva) * tc) }} {{ moneda }}</td></tr>
+      <tr class="total-row"><td>Total:</td>               <td>${{ "{:,.2f}".format(float(cot.total) * tc) }} {{ moneda }}</td></tr>
     </table>
   </div>
 

@@ -183,7 +183,22 @@
         <!-- Columna derecha: resumen -->
         <div>
           <div class="card" style="position:sticky;top:24px">
-            <div style="font-size:15px;font-weight:600;margin-bottom:18px">Resumen</div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:14px">Resumen</div>
+
+            <!-- Selector de moneda -->
+            <div style="margin-bottom:14px">
+              <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500">Moneda de la cotización</div>
+              <div style="display:flex;gap:8px">
+                <button id="btn-mxn" class="btn btn-primary btn-sm" style="flex:1" onclick="setMoneda('MXN')">
+                  🇲🇽 MXN
+                </button>
+                <button id="btn-usd" class="btn btn-secondary btn-sm" style="flex:1" onclick="setMoneda('USD')">
+                  🇺🇸 USD
+                </button>
+              </div>
+              <div id="tc-info" style="display:none;margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:6px;font-size:11px;color:var(--text3);text-align:center"></div>
+            </div>
+
             <div class="totales-box">
               <div class="totales-row"><span>Subtotal</span><span id="r-subtotal">$0.00</span></div>
               <div class="totales-row"><span>IVA (16%)</span><span id="r-iva">$0.00</span></div>
@@ -253,7 +268,7 @@
   </div>
 </div>
 
-<script src="api.js"></script>
+<script src="api.js?v=3"></script>
 <script>
 requireAuth();
 document.getElementById('sidebar-root').innerHTML = renderSidebar('cotizaciones');
@@ -267,6 +282,7 @@ let clientes = [];
 let items = [];       // items del formulario nueva cotización
 let clienteId = null;
 let estadoEditId = null;
+let monedaSeleccionada = 'MXN';
 
 // ─── Inicialización ───────────────────────────────────────
 async function init() {
@@ -276,6 +292,7 @@ async function init() {
       apiFetch('/productos/'),
       apiFetch('/clientes/'),
     ]);
+    await loadTipoCambio();
     renderStats();
     renderTabla(cotizaciones);
   } catch (e) {
@@ -330,12 +347,16 @@ function renderTabla(data) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">Sin cotizaciones</td></tr>`;
     return;
   }
-  tbody.innerHTML = data.map(c => `
+  tbody.innerHTML = data.map(c => {
+    const tc = c.tipo_cambio || 1;
+    const moneda = c.moneda || 'MXN';
+    const totalDisplay = formatCurrency(c.total, moneda, tc);
+    return `
     <tr>
       <td><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">${c.numero_cotizacion}</span></td>
       <td><strong style="color:var(--text)">${c.cliente.nombre_razon_social}</strong></td>
       <td style="color:var(--text2)">${c.vendedor.nombre}</td>
-      <td><strong style="color:var(--accent2)">${formatMXN(c.total)}</strong></td>
+      <td><strong style="color:var(--accent2)">${totalDisplay}</strong></td>
       <td>${estadoBadge(c.estado)}</td>
       <td style="color:var(--text3)">${formatDate(c.fecha)}</td>
       <td style="color:var(--text3)">${formatDate(c.vigencia)}</td>
@@ -346,7 +367,7 @@ function renderTabla(data) {
         </div>
       </td>
     </tr>
-  `).join('');
+  `;}).join('');
 }
 
 // ─── Panels ───────────────────────────────────────────────
@@ -357,13 +378,33 @@ function showPanel(name) {
   if (name === 'lista') init();
 }
 
+// ─── Moneda ───────────────────────────────────────────────
+function setMoneda(m) {
+  monedaSeleccionada = m;
+  document.getElementById('btn-mxn').className = `btn btn-sm${m === 'MXN' ? ' btn-primary' : ' btn-secondary'}`;
+  document.getElementById('btn-usd').className = `btn btn-sm${m === 'USD' ? ' btn-primary' : ' btn-secondary'}`;
+  document.getElementById('btn-mxn').style.flex = '1';
+  document.getElementById('btn-usd').style.flex = '1';
+  const tcInfo = document.getElementById('tc-info');
+  const tc = getTipoCambio();
+  if (m === 'USD' && tc) {
+    tcInfo.textContent = `Tipo de cambio: 1 USD = $${tc.toFixed(2)} MXN`;
+    tcInfo.style.display = 'block';
+  } else {
+    tcInfo.style.display = 'none';
+  }
+  calcularTotales();
+}
+
 // ─── Nueva cotización ─────────────────────────────────────
 function resetNueva() {
   items = [];
   clienteId = null;
+  monedaSeleccionada = 'MXN';
   document.getElementById('buscar-cliente').value = '';
   document.getElementById('cliente-seleccionado').style.display = 'none';
   document.getElementById('f-notas').value = '';
+  setMoneda('MXN');
   renderItems();
   calcularTotales();
 }
@@ -619,9 +660,10 @@ function calcularTotales() {
   });
   const iva = subtotal * 0.16;
   const total = subtotal + iva;
-  document.getElementById('r-subtotal').textContent = formatMXN(subtotal);
-  document.getElementById('r-iva').textContent = formatMXN(iva);
-  document.getElementById('r-total').textContent = formatMXN(total);
+  const tc = getTipoCambio() || 1;
+  document.getElementById('r-subtotal').textContent = formatCurrency(subtotal, monedaSeleccionada, tc);
+  document.getElementById('r-iva').textContent = formatCurrency(iva, monedaSeleccionada, tc);
+  document.getElementById('r-total').textContent = formatCurrency(total, monedaSeleccionada, tc);
 }
 
 // ─── Generar cotización ───────────────────────────────────
@@ -638,6 +680,7 @@ async function generarCotizacion() {
     const body = {
       cliente_id: clienteId,
       notas: document.getElementById('f-notas').value.trim() || null,
+      moneda: monedaSeleccionada,
       items: itemsValidos.map(i => ({
         producto_id: i.productoId,
         cantidad: i.cantidad,

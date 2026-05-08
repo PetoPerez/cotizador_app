@@ -71,6 +71,35 @@ function formatMXN(amount) {
   }).format(amount || 0);
 }
 
+function formatCurrency(amount, moneda = 'MXN', tc = 1) {
+  // Precios en BD están en USD, multiplicamos por TC para MXN
+  const val = moneda === 'MXN' ? (amount || 0) * tc : (amount || 0);
+  return new Intl.NumberFormat(moneda === 'USD' ? 'en-US' : 'es-MX', {
+    style: 'currency', currency: moneda,
+  }).format(val);
+}
+
+let _tcCache = null;
+
+async function loadTipoCambio() {
+  try {
+    const data = await apiFetch('/cotizaciones/tipo-cambio');
+    _tcCache = data.usd_mxn;
+    const chip = document.getElementById('tc-chip');
+    if (chip) {
+      chip.textContent = `1 USD = $${data.usd_mxn.toFixed(2)} MXN`;
+      chip.title = 'Tipo de cambio actualizado';
+    }
+    return data.usd_mxn;
+  } catch {
+    const chip = document.getElementById('tc-chip');
+    if (chip) chip.textContent = 'T.C. no disponible';
+    return null;
+  }
+}
+
+function getTipoCambio() { return _tcCache; }
+
 function estadoBadge(estado) {
   const map = {
     borrador: 'badge-gray',
@@ -95,6 +124,7 @@ function renderSidebar(active) {
   return `
     <aside class="sidebar">
       <div class="sidebar-logo">Cotizaciones</div>
+      <div class="tc-chip" id="tc-chip">Cargando T.C....</div>
       <nav class="sidebar-nav">
         ${links.map(l => `
           <a href="${l.href}" class="nav-link ${active === l.key ? 'active' : ''}">

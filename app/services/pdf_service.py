@@ -22,10 +22,18 @@ def generar_pdf(cotizacion) -> bytes:
         "telefono":      settings.EMPRESA_TELEFONO,
         "email":         settings.EMPRESA_EMAIL,
     }
+    moneda = getattr(cotizacion, 'moneda', 'MXN') or 'MXN'
+    tc_raw = getattr(cotizacion, 'tipo_cambio', None)
+    # Precios en BD están en USD, multiplicamos por TC para MXN
+    tc = float(tc_raw) if tc_raw and moneda == 'MXN' else 1.0
+
     template = env.get_template("cotizacion.html")
     html_str = template.render(
         cot=cotizacion,
         empresa=empresa,
         fecha_es=_fecha_es,
+        moneda=moneda,
+        tc=tc,
+        float=float,
     )
     return HTML(string=html_str).write_pdf()

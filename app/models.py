@@ -84,6 +84,8 @@ class Cotizacion(Base):
     total = Column(Numeric(14, 2), nullable=False, default=0)
     fecha = Column(DateTime(timezone=True), default=now_utc)
     vigencia = Column(DateTime(timezone=True))
+    moneda = Column(String(3), nullable=False, default='MXN')
+    tipo_cambio = Column(Numeric(10, 4), nullable=True)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cliente = relationship("Cliente", back_populates="cotizaciones")
