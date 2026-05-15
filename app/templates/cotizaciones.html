@@ -198,6 +198,25 @@
               </div>
             </div>
 
+            <!-- Selector de empresas -->
+            <div style="margin-bottom:14px">
+              <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500">Empresas para cotizar</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="chk-clm" value="clm" checked onchange="actualizarEmpresas()">
+                  <span style="font-size:13px">CLM</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="chk-supliese-gamesail" value="supliese_gamesail" onchange="actualizarEmpresas()">
+                  <span style="font-size:13px">Supliese by Gamesail</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="chk-supliese" value="supliese" onchange="actualizarEmpresas()">
+                  <span style="font-size:13px">Supliese</span>
+                </label>
+              </div>
+            </div>
+
             <!-- Tipo de cambio editable -->
             <div style="margin-bottom:14px">
               <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500">
@@ -295,6 +314,7 @@ let clienteId = null;
 let estadoEditId = null;
 let monedaSeleccionada = 'MXN';
 let tipoCambioEditable = null;  // tipo de cambio que el usuario puede editar
+let empresasSeleccionadas = ['clm'];  // empresas para las que se generará la cotización
 
 // ─── Inicialización ───────────────────────────────────────
 async function init() {
@@ -419,6 +439,14 @@ function actualizarTipoCambio() {
     tipoCambioEditable = val;
     calcularTotales();
   }
+}
+
+// ─── Empresas ─────────────────────────────────────────────
+function actualizarEmpresas() {
+  empresasSeleccionadas = [];
+  if (document.getElementById('chk-clm').checked) empresasSeleccionadas.push('clm');
+  if (document.getElementById('chk-supliese-gamesail').checked) empresasSeleccionadas.push('supliese_gamesail');
+  if (document.getElementById('chk-supliese').checked) empresasSeleccionadas.push('supliese');
 }
 
 // ─── Nueva cotización ─────────────────────────────────────
@@ -697,6 +725,7 @@ async function generarCotizacion() {
   if (!clienteId) { showAlert('Selecciona un cliente'); return; }
   const itemsValidos = items.filter(i => i.productoId);
   if (!itemsValidos.length) { showAlert('Agrega al menos un producto'); return; }
+  if (!empresasSeleccionadas.length) { showAlert('Selecciona al menos una empresa'); return; }
 
   const btn = document.getElementById('btn-generar');
   btn.disabled = true;
@@ -708,15 +737,22 @@ async function generarCotizacion() {
       notas: document.getElementById('f-notas').value.trim() || null,
       moneda: monedaSeleccionada,
       tipo_cambio: tipoCambioEditable,
+      empresas: empresasSeleccionadas,
       items: itemsValidos.map(i => ({
         producto_id: i.productoId,
         cantidad: i.cantidad,
         porcentaje_ajuste: i.ajuste,
       })),
     };
-    const cot = await apiFetch('/cotizaciones/', { method: 'POST', body: JSON.stringify(body) });
-    showAlert(`Cotización ${cot.numero_cotizacion} creada`, 'success');
-    await descargarPDF(cot.id, cot.numero_cotizacion);
+    const cotizaciones = await apiFetch('/cotizaciones/', { method: 'POST', body: JSON.stringify(body) });
+
+    // Descargar PDF para cada cotización
+    for (const cot of cotizaciones) {
+      await descargarPDF(cot.id, cot.numero_cotizacion);
+    }
+
+    const numeros = cotizaciones.map(c => c.numero_cotizacion).join(', ');
+    showAlert(`Cotizaciones creadas: ${numeros}`, 'success');
     showPanel('lista');
   } catch (e) {
     showAlert(e.message);

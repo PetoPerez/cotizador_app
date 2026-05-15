@@ -57,7 +57,7 @@ def obtener(id: str, db: Session = Depends(get_db), current_user: models.Usuario
     return cot
 
 
-@router.post("/", response_model=schemas.CotizacionOut)
+@router.post("/", response_model=list[schemas.CotizacionOut])
 def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     if not data.items:
         raise HTTPException(status_code=400, detail="La cotización debe tener al menos un ítem")
@@ -72,58 +72,65 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
     else:
         tc = get_usd_mxn()
 
-    cotizacion = models.Cotizacion(
-        numero_cotizacion=_siguiente_numero(db),
-        cliente_id=data.cliente_id,
-        vendedor_id=current_user.id,
-        notas=data.notas,
-        vigencia=datetime.now(timezone.utc) + timedelta(days=10),
-        moneda=data.moneda,
-        tipo_cambio=round(tc, 4) if tc else None,
-    )
-    db.add(cotizacion)
-    db.flush()
+    cotizaciones_creadas = []
 
-    subtotal = 0.0
-    for item_data in data.items:
-        producto = db.query(models.Producto).filter(
-            models.Producto.id == item_data.producto_id,
-            models.Producto.activo == True
-        ).first()
-        if not producto:
-            raise HTTPException(status_code=404, detail=f"Producto {item_data.producto_id} no encontrado")
-
-        # Validar rango de ajuste
-        if not (float(current_user.margen_min) <= item_data.porcentaje_ajuste <= float(current_user.margen_max)):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Ajuste {item_data.porcentaje_ajuste}% fuera del rango permitido "
-                       f"[{current_user.margen_min}%, {current_user.margen_max}%]"
-            )
-
-        precio_final = float(producto.precio_lista) * (1 + item_data.porcentaje_ajuste / 100)
-        importe = precio_final * item_data.cantidad
-
-        item = models.CotizacionItem(
-            cotizacion_id=cotizacion.id,
-            producto_id=item_data.producto_id,
-            cantidad=item_data.cantidad,
-            precio_lista=float(producto.precio_lista),
-            porcentaje_ajuste=item_data.porcentaje_ajuste,
-            precio_final=round(precio_final, 2),
-            importe=round(importe, 2),
+    # Crear una cotización por cada empresa seleccionada
+    for empresa_code in data.empresas:
+        cotizacion = models.Cotizacion(
+            numero_cotizacion=_siguiente_numero(db),
+            cliente_id=data.cliente_id,
+            vendedor_id=current_user.id,
+            notas=data.notas,
+            vigencia=datetime.now(timezone.utc) + timedelta(days=10),
+            moneda=data.moneda,
+            tipo_cambio=round(tc, 4) if tc else None,
+            empresa=empresa_code,
         )
-        db.add(item)
-        subtotal += importe
+        db.add(cotizacion)
+        db.flush()
 
-    iva = subtotal * (settings.IVA_PORCENTAJE / 100)
-    cotizacion.subtotal = round(subtotal, 2)
-    cotizacion.iva = round(iva, 2)
-    cotizacion.total = round(subtotal + iva, 2)
+        subtotal = 0.0
+        for item_data in data.items:
+            producto = db.query(models.Producto).filter(
+                models.Producto.id == item_data.producto_id,
+                models.Producto.activo == True
+            ).first()
+            if not producto:
+                raise HTTPException(status_code=404, detail=f"Producto {item_data.producto_id} no encontrado")
+
+            # Validar rango de ajuste
+            if not (float(current_user.margen_min) <= item_data.porcentaje_ajuste <= float(current_user.margen_max)):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ajuste {item_data.porcentaje_ajuste}% fuera del rango permitido "
+                           f"[{current_user.margen_min}%, {current_user.margen_max}%]"
+                )
+
+            precio_final = float(producto.precio_lista) * (1 + item_data.porcentaje_ajuste / 100)
+            importe = precio_final * item_data.cantidad
+
+            item = models.CotizacionItem(
+                cotizacion_id=cotizacion.id,
+                producto_id=item_data.producto_id,
+                cantidad=item_data.cantidad,
+                precio_lista=float(producto.precio_lista),
+                porcentaje_ajuste=item_data.porcentaje_ajuste,
+                precio_final=round(precio_final, 2),
+                importe=round(importe, 2),
+            )
+            db.add(item)
+            subtotal += importe
+
+        iva = subtotal * (settings.IVA_PORCENTAJE / 100)
+        cotizacion.subtotal = round(subtotal, 2)
+        cotizacion.iva = round(iva, 2)
+        cotizacion.total = round(subtotal + iva, 2)
+        cotizaciones_creadas.append(cotizacion)
 
     db.commit()
-    db.refresh(cotizacion)
-    return cotizacion
+    for cot in cotizaciones_creadas:
+        db.refresh(cot)
+    return cotizaciones_creadas
 
 
 @router.patch("/{id}/estado")

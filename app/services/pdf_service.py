@@ -14,6 +14,15 @@ def _fecha_es(dt):
     return f"{_DIAS[dt.weekday()]}, {dt.day} de {_MESES[dt.month-1]} de {dt.year}"
 
 def generar_pdf(cotizacion) -> bytes:
+    # Seleccionar template según empresa
+    empresa_code = getattr(cotizacion, 'empresa', 'clm') or 'clm'
+    template_map = {
+        'clm': 'cotizacion_clm.html',
+        'supliese_gamesail': 'cotizacion_supliese_gamesail.html',
+        'supliese': 'cotizacion_supliese.html',
+    }
+    template_name = template_map.get(empresa_code, 'cotizacion_clm.html')
+
     empresa = {
         "nombre":        settings.EMPRESA_NOMBRE,
         "marca":         settings.EMPRESA_MARCA,
@@ -27,7 +36,7 @@ def generar_pdf(cotizacion) -> bytes:
     # Precios en BD están en USD, multiplicamos por TC para MXN
     tc = float(tc_raw) if tc_raw and moneda == 'MXN' else 1.0
 
-    template = env.get_template("cotizacion.html")
+    template = env.get_template(template_name)
     html_str = template.render(
         cot=cotizacion,
         empresa=empresa,

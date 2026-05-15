@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Literal
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -24,8 +24,8 @@ class UsuarioCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
     rol: str = Field("vendedor", pattern="^(admin|vendedor)$")
-    margen_min: float = Field(-10.0, ge=-100, le=0)
-    margen_max: float = Field(10.0, ge=0, le=100)
+    margen_min: float = Field(-5.0, ge=-100, le=0)
+    margen_max: float = Field(5.0, ge=0, le=100)
 
 class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=1, max_length=100)
@@ -131,6 +131,7 @@ class CotizacionCreate(BaseModel):
     notas: Optional[str] = None
     moneda: str = Field('MXN', pattern='^(MXN|USD)$')
     tipo_cambio: Optional[float] = None
+    empresas: List[Literal['clm', 'supliese_gamesail', 'supliese']] = Field(default=['clm'])
 
 class CotizacionOut(BaseModel):
     id: UUID
@@ -144,6 +145,7 @@ class CotizacionOut(BaseModel):
     total: float
     moneda: str
     tipo_cambio: Optional[float] = None
+    empresa: str
     fecha: datetime
     vigencia: Optional[datetime]
     items: List[CotizacionItemOut]

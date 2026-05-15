@@ -21,8 +21,8 @@ class Usuario(Base):
     email = Column(String(150), nullable=False, unique=True)
     password_hash = Column(Text, nullable=False)
     rol = Column(String(20), nullable=False, default="vendedor")
-    margen_min = Column(Numeric(5, 2), nullable=False, default=-10.00)
-    margen_max = Column(Numeric(5, 2), nullable=False, default=10.00)
+    margen_min = Column(Numeric(5, 2), nullable=False, default=-5.00)
+    margen_max = Column(Numeric(5, 2), nullable=False, default=5.00)
     activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
@@ -86,6 +86,7 @@ class Cotizacion(Base):
     vigencia = Column(DateTime(timezone=True))
     moneda = Column(String(3), nullable=False, default='MXN')
     tipo_cambio = Column(Numeric(10, 4), nullable=True)
+    empresa = Column(String(30), nullable=False, default='clm')
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cliente = relationship("Cliente", back_populates="cotizaciones")

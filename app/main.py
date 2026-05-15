@@ -35,6 +35,10 @@ def on_startup():
         """))
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS moneda VARCHAR(3) NOT NULL DEFAULT 'MXN'"))
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS tipo_cambio NUMERIC(10,4)"))
+        conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS empresa VARCHAR(30) NOT NULL DEFAULT 'clm'"))
+        # Actualizar márgenes de usuarios existentes de -10/+10 a -5/+5
+        conn.execute(text("UPDATE usuarios SET margen_min = -5.00 WHERE margen_min = -10.00"))
+        conn.execute(text("UPDATE usuarios SET margen_max = 5.00 WHERE margen_max = 10.00"))
         conn.commit()
 
 _origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]

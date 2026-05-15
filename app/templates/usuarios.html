@@ -75,11 +75,11 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="form-group">
         <label class="form-label">Margen mínimo (%)</label>
-        <input type="number" class="form-control" id="f-margen-min" value="-10" step="1" min="-100" max="0">
+        <input type="number" class="form-control" id="f-margen-min" value="-5" step="1" min="-100" max="0">
       </div>
       <div class="form-group">
         <label class="form-label">Margen máximo (%)</label>
-        <input type="number" class="form-control" id="f-margen-max" value="10" step="1" min="0" max="100">
+        <input type="number" class="form-control" id="f-margen-max" value="5" step="1" min="0" max="100">
       </div>
     </div>
     <p style="font-size:12px;color:var(--text3);margin-top:-8px;margin-bottom:16px">
@@ -146,8 +146,8 @@ function openModal(id = null) {
   if (!id) {
     ['f-nombre','f-email','f-password'].forEach(f => document.getElementById(f).value = '');
     document.getElementById('f-rol').value = 'vendedor';
-    document.getElementById('f-margen-min').value = -10;
-    document.getElementById('f-margen-max').value = 10;
+    document.getElementById('f-margen-min').value = -5;
+    document.getElementById('f-margen-max').value = 5;
   }
   document.getElementById('modal').classList.add('open');
 }
