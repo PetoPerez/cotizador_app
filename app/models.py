@@ -86,7 +86,7 @@ class Cotizacion(Base):
     vigencia = Column(DateTime(timezone=True))
     moneda = Column(String(3), nullable=False, default='MXN')
     tipo_cambio = Column(Numeric(10, 4), nullable=True)
-    empresa = Column(String(30), nullable=False, default='clm')
+    empresa = Column(String(30), nullable=False, default='clm')  # clm, supliese_gamesail, supliese, supliese_gomez
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cliente = relationship("Cliente", back_populates="cotizaciones")

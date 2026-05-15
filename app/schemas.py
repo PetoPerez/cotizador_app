@@ -131,7 +131,7 @@ class CotizacionCreate(BaseModel):
     notas: Optional[str] = None
     moneda: str = Field('MXN', pattern='^(MXN|USD)$')
     tipo_cambio: Optional[float] = None
-    empresas: List[Literal['clm', 'supliese_gamesail', 'supliese']] = Field(default=['clm'])
+    empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'supliese_gomez']] = Field(default=['clm'])
 
 class CotizacionOut(BaseModel):
     id: UUID
