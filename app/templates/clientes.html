@@ -48,24 +48,86 @@
 
 <!-- Modal -->
 <div class="modal-overlay" id="modal">
-  <div class="modal">
+  <div class="modal" style="max-width:720px">
     <div class="modal-header">
       <div class="modal-title" id="modal-title">Nuevo cliente</div>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div id="modal-alert" class="alert hidden"></div>
+
     <div class="form-group">
       <label class="form-label">Nombre o razón social *</label>
       <input type="text" class="form-control" id="f-nombre" placeholder="Empresa S.A. de C.V.">
     </div>
-    <div class="form-group">
-      <label class="form-label">Teléfono de contacto</label>
-      <input type="text" class="form-control" id="f-telefono" placeholder="33 1234 5678">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Teléfono de contacto</label>
+        <input type="text" class="form-control" id="f-telefono" placeholder="33 1234 5678">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Correo electrónico</label>
+        <input type="email" class="form-control" id="f-email" placeholder="contacto@empresa.com">
+      </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Correo electrónico</label>
-      <input type="email" class="form-control" id="f-email" placeholder="contacto@empresa.com">
+
+    <div style="display:grid;grid-template-columns:140px 1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Atención a</label>
+        <select class="form-control" id="f-atencion-titulo">
+          <option value="">—</option>
+          <option value="Lic.">Lic.</option>
+          <option value="Ing.">Ing.</option>
+          <option value="Mtro.">Mtro.</option>
+          <option value="Dr.">Dr.</option>
+          <option value="Arq.">Arq.</option>
+          <option value="Cap.">Cap.</option>
+          <option value="Tte.">Tte.</option>
+          <option value="Sr.">Sr.</option>
+          <option value="Sra.">Sra.</option>
+          <option value="Srta.">Srta.</option>
+          <option value="Jefe">Jefe</option>
+          <option value="Gerente">Gerente</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Nombre del contacto</label>
+        <input type="text" class="form-control" id="f-atencion-nombre" placeholder="Juan Pérez García">
+      </div>
     </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">RFC</label>
+        <input type="text" class="form-control" id="f-rfc" placeholder="XAXX010101000" maxlength="20" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">País</label>
+        <input type="text" class="form-control" id="f-pais" placeholder="México" value="México">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Ciudad</label>
+        <input type="text" class="form-control" id="f-ciudad" placeholder="Guadalajara">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <input type="text" class="form-control" id="f-estado" placeholder="Jalisco">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Domicilio de la empresa</label>
+      <textarea class="form-control" id="f-domicilio-empresa" rows="2" placeholder="Calle, número, colonia, C.P."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Domicilio de entrega</label>
+      <textarea class="form-control" id="f-domicilio-entrega" rows="2" placeholder="Calle, número, colonia, C.P."></textarea>
+    </div>
+
     <div class="flex gap-8 mt-16" style="justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" id="btn-save" onclick="guardar()">Guardar</button>
@@ -119,11 +181,19 @@ function renderTabla(data) {
   `).join('');
 }
 
+const CAMPOS = [
+  'f-nombre','f-telefono','f-email',
+  'f-atencion-titulo','f-atencion-nombre',
+  'f-rfc','f-pais','f-ciudad','f-estado',
+  'f-domicilio-empresa','f-domicilio-entrega'
+];
+
 function openModal(id = null) {
   editId = id;
   document.getElementById('modal-title').textContent = id ? 'Editar cliente' : 'Nuevo cliente';
   if (!id) {
-    ['f-nombre','f-telefono','f-email'].forEach(f => document.getElementById(f).value = '');
+    CAMPOS.forEach(f => document.getElementById(f).value = '');
+    document.getElementById('f-pais').value = 'México';
   }
   document.getElementById('modal').classList.add('open');
 }
@@ -139,6 +209,14 @@ function editar(id) {
   document.getElementById('f-nombre').value = c.nombre_razon_social;
   document.getElementById('f-telefono').value = c.telefono || '';
   document.getElementById('f-email').value = c.email || '';
+  document.getElementById('f-atencion-titulo').value = c.atencion_titulo || '';
+  document.getElementById('f-atencion-nombre').value = c.atencion_nombre || '';
+  document.getElementById('f-rfc').value = c.rfc || '';
+  document.getElementById('f-pais').value = c.pais || 'México';
+  document.getElementById('f-ciudad').value = c.ciudad || '';
+  document.getElementById('f-estado').value = c.estado || '';
+  document.getElementById('f-domicilio-empresa').value = c.domicilio_empresa || '';
+  document.getElementById('f-domicilio-entrega').value = c.domicilio_entrega || '';
   openModal(id);
 }
 
@@ -147,6 +225,14 @@ async function guardar() {
     nombre_razon_social: document.getElementById('f-nombre').value.trim(),
     telefono: document.getElementById('f-telefono').value.trim() || null,
     email: document.getElementById('f-email').value.trim() || null,
+    atencion_titulo: document.getElementById('f-atencion-titulo').value || null,
+    atencion_nombre: document.getElementById('f-atencion-nombre').value.trim() || null,
+    rfc: document.getElementById('f-rfc').value.trim().toUpperCase() || null,
+    pais: document.getElementById('f-pais').value.trim() || 'México',
+    ciudad: document.getElementById('f-ciudad').value.trim() || null,
+    estado: document.getElementById('f-estado').value.trim() || null,
+    domicilio_empresa: document.getElementById('f-domicilio-empresa').value.trim() || null,
+    domicilio_entrega: document.getElementById('f-domicilio-entrega').value.trim() || null,
   };
 
   if (!body.nombre_razon_social) {

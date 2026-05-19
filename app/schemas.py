@@ -54,17 +54,41 @@ class ClienteCreate(BaseModel):
     nombre_razon_social: str = Field(..., min_length=1, max_length=200)
     telefono: Optional[str] = Field(None, max_length=30)
     email: Optional[str] = Field(None, max_length=150)
+    atencion_titulo: Optional[str] = Field(None, max_length=20)
+    atencion_nombre: Optional[str] = Field(None, max_length=150)
+    ciudad: Optional[str] = Field(None, max_length=100)
+    estado: Optional[str] = Field(None, max_length=100)
+    pais: Optional[str] = Field('México', max_length=100)
+    rfc: Optional[str] = Field(None, max_length=20)
+    domicilio_empresa: Optional[str] = None
+    domicilio_entrega: Optional[str] = None
 
 class ClienteUpdate(BaseModel):
     nombre_razon_social: Optional[str] = Field(None, min_length=1, max_length=200)
     telefono: Optional[str] = Field(None, max_length=30)
     email: Optional[str] = Field(None, max_length=150)
+    atencion_titulo: Optional[str] = Field(None, max_length=20)
+    atencion_nombre: Optional[str] = Field(None, max_length=150)
+    ciudad: Optional[str] = Field(None, max_length=100)
+    estado: Optional[str] = Field(None, max_length=100)
+    pais: Optional[str] = Field(None, max_length=100)
+    rfc: Optional[str] = Field(None, max_length=20)
+    domicilio_empresa: Optional[str] = None
+    domicilio_entrega: Optional[str] = None
 
 class ClienteOut(BaseModel):
     id: UUID
     nombre_razon_social: str
     telefono: Optional[str]
     email: Optional[str]
+    atencion_titulo: Optional[str] = None
+    atencion_nombre: Optional[str] = None
+    ciudad: Optional[str] = None
+    estado: Optional[str] = None
+    pais: Optional[str] = None
+    rfc: Optional[str] = None
+    domicilio_empresa: Optional[str] = None
+    domicilio_entrega: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

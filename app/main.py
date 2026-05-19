@@ -36,6 +36,15 @@ def on_startup():
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS moneda VARCHAR(3) NOT NULL DEFAULT 'MXN'"))
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS tipo_cambio NUMERIC(10,4)"))
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS empresa VARCHAR(30) NOT NULL DEFAULT 'clm'"))
+        # Nuevos campos para clientes
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS atencion_titulo VARCHAR(20)"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS atencion_nombre VARCHAR(150)"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS ciudad VARCHAR(100)"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS estado VARCHAR(100)"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS pais VARCHAR(100) DEFAULT 'México'"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS rfc VARCHAR(20)"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS domicilio_empresa TEXT"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS domicilio_entrega TEXT"))
         # Actualizar márgenes de usuarios existentes de -10/+10 a -5/+5
         conn.execute(text("UPDATE usuarios SET margen_min = -5.00 WHERE margen_min = -10.00"))
         conn.execute(text("UPDATE usuarios SET margen_max = 5.00 WHERE margen_max = 10.00"))

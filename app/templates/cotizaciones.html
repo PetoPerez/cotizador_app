@@ -277,25 +277,87 @@
 
 <!-- Modal nuevo cliente rápido -->
 <div class="modal-overlay" id="modal-cliente">
-  <div class="modal" style="max-width:420px">
+  <div class="modal" style="max-width:720px">
     <div class="modal-header">
       <div class="modal-title">Nuevo cliente</div>
       <button class="modal-close" onclick="closeModalCliente()">×</button>
     </div>
     <div id="modal-cliente-alert" class="alert hidden"></div>
+
     <div class="form-group">
       <label class="form-label">Nombre o razón social *</label>
       <input type="text" class="form-control" id="nc-nombre" placeholder="Empresa S.A. de C.V.">
     </div>
-    <div class="form-group">
-      <label class="form-label">Teléfono</label>
-      <input type="text" class="form-control" id="nc-telefono" placeholder="33 1234 5678">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Teléfono de contacto</label>
+        <input type="text" class="form-control" id="nc-telefono" placeholder="33 1234 5678">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Correo electrónico</label>
+        <input type="email" class="form-control" id="nc-email" placeholder="contacto@empresa.com">
+      </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Email</label>
-      <input type="email" class="form-control" id="nc-email" placeholder="contacto@empresa.com">
+
+    <div style="display:grid;grid-template-columns:140px 1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Atención a</label>
+        <select class="form-control" id="nc-atencion-titulo">
+          <option value="">—</option>
+          <option value="Lic.">Lic.</option>
+          <option value="Ing.">Ing.</option>
+          <option value="Mtro.">Mtro.</option>
+          <option value="Dr.">Dr.</option>
+          <option value="Arq.">Arq.</option>
+          <option value="Cap.">Cap.</option>
+          <option value="Tte.">Tte.</option>
+          <option value="Sr.">Sr.</option>
+          <option value="Sra.">Sra.</option>
+          <option value="Srta.">Srta.</option>
+          <option value="Jefe">Jefe</option>
+          <option value="Gerente">Gerente</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Nombre del contacto</label>
+        <input type="text" class="form-control" id="nc-atencion-nombre" placeholder="Juan Pérez García">
+      </div>
     </div>
-    <div class="flex gap-8" style="justify-content:flex-end">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">RFC</label>
+        <input type="text" class="form-control" id="nc-rfc" placeholder="XAXX010101000" maxlength="20" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">País</label>
+        <input type="text" class="form-control" id="nc-pais" placeholder="México" value="México">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Ciudad</label>
+        <input type="text" class="form-control" id="nc-ciudad" placeholder="Guadalajara">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <input type="text" class="form-control" id="nc-estado" placeholder="Jalisco">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Domicilio de la empresa</label>
+      <textarea class="form-control" id="nc-domicilio-empresa" rows="2" placeholder="Calle, número, colonia, C.P."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Domicilio de entrega</label>
+      <textarea class="form-control" id="nc-domicilio-entrega" rows="2" placeholder="Calle, número, colonia, C.P."></textarea>
+    </div>
+
+    <div class="flex gap-8 mt-16" style="justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeModalCliente()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
     </div>
@@ -823,7 +885,12 @@ async function guardarEstado() {
 
 // ─── Modal cliente rápido ─────────────────────────────────
 function openModalCliente() {
-  ['nc-nombre','nc-telefono','nc-email'].forEach(f => document.getElementById(f).value = '');
+  ['nc-nombre','nc-telefono','nc-email',
+   'nc-atencion-titulo','nc-atencion-nombre',
+   'nc-rfc','nc-ciudad','nc-estado',
+   'nc-domicilio-empresa','nc-domicilio-entrega'
+  ].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('nc-pais').value = 'México';
   document.getElementById('modal-cliente').classList.add('open');
 }
 
@@ -844,6 +911,14 @@ async function guardarCliente() {
         nombre_razon_social: nombre,
         telefono: document.getElementById('nc-telefono').value.trim() || null,
         email: document.getElementById('nc-email').value.trim() || null,
+        atencion_titulo: document.getElementById('nc-atencion-titulo').value || null,
+        atencion_nombre: document.getElementById('nc-atencion-nombre').value.trim() || null,
+        rfc: document.getElementById('nc-rfc').value.trim().toUpperCase() || null,
+        pais: document.getElementById('nc-pais').value.trim() || 'México',
+        ciudad: document.getElementById('nc-ciudad').value.trim() || null,
+        estado: document.getElementById('nc-estado').value.trim() || null,
+        domicilio_empresa: document.getElementById('nc-domicilio-empresa').value.trim() || null,
+        domicilio_entrega: document.getElementById('nc-domicilio-entrega').value.trim() || null,
       }),
     });
     clientes.push(c);
