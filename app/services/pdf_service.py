@@ -24,6 +24,10 @@ def generar_pdf(cotizacion) -> bytes:
     }
     template_name = template_map.get(empresa_code, 'cotizacion_clm.html')
 
+    # Base path para imágenes
+    static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+    base_url = f"file://{os.path.abspath(static_dir)}/"
+
     empresa = {
         "nombre":        settings.EMPRESA_NOMBRE,
         "marca":         settings.EMPRESA_MARCA,
@@ -46,4 +50,4 @@ def generar_pdf(cotizacion) -> bytes:
         tc=tc,
         float=float,
     )
-    return HTML(string=html_str).write_pdf()
+    return HTML(string=html_str, base_url=base_url).write_pdf()

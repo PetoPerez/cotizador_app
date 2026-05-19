@@ -1,0 +1,12 @@
+<svg width="280" height="70" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .clm-text {
+      font-family: Impact, 'Arial Black', sans-serif;
+      font-size: 68px;
+      font-weight: 900;
+      fill: #c0392b;
+      letter-spacing: 8px;
+    }
+  </style>
+  <text x="10" y="58" class="clm-text">CLM</text>
+</svg>

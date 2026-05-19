@@ -98,4 +98,6 @@ def page_usuarios():
     return _page("usuarios")
 
 # ── Archivos estáticos (css, js, fuentes, etc.) ──────────────
-app.mount("/", StaticFiles(directory=templates_dir), name="static")
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/", StaticFiles(directory=templates_dir), name="templates")

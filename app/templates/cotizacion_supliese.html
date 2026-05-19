@@ -24,18 +24,20 @@ body {
    ───────────────────────────────────────── */
 .watermark {
   position: fixed;
-  top: 42%;
+  top: 38%;
   left: 50%;
   transform: translateX(-50%);
-  font-family: Impact, 'Arial Black', Arial, sans-serif;
-  font-style: italic;
-  font-size: 200px;
-  font-weight: 900;
-  letter-spacing: 12px;
-  color: rgba(0, 179, 136, 0.065);
-  white-space: nowrap;
+  width: 500px;
+  height: 200px;
   z-index: 0;
   pointer-events: none;
+  text-align: center;
+}
+.watermark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.12;
 }
 
 /* ─────────────────────────────────────────
@@ -92,9 +94,9 @@ body {
 /* ─────────────────────────────────────────
    CABECERA: LOGO + DOTS
    ───────────────────────────────────────── */
-.hdr-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-.hdr-logo-cell  { vertical-align: middle; width: 180px; }
-.hdr-dots-cell  { vertical-align: top; text-align: right; }
+.hdr-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; background: transparent; }
+.hdr-logo-cell  { vertical-align: middle; width: 200px; background: transparent; }
+.hdr-dots-cell  { vertical-align: middle; text-align: right; background: transparent; padding-left: 10px; }
 
 /* Logo Supliese */
 .logo-supliese-main {
@@ -162,11 +164,16 @@ body {
   margin-bottom: 8px;
   page-break-after: avoid;
   break-after: avoid;
+  background: transparent;
 }
 .prod-table th {
   background: #00B388; color: #fff;
   padding: 5px 12px; text-align: center;
   font-size: 10px; font-weight: bold;
+}
+.prod-table tbody tr,
+.prod-table td {
+  background: transparent;
 }
 .prod-table td {
   padding: 5px 12px; text-align: center;
@@ -209,8 +216,8 @@ body {
   page-break-inside: avoid; break-inside: avoid;
 }
 .presup-title { color: #00B388; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
-.presup-table { margin-left: auto; border-collapse: collapse; min-width: 260px; }
-.presup-table td { padding: 3px 12px; font-size: 10px; text-align: right; }
+.presup-table { margin-left: auto; border-collapse: collapse; min-width: 260px; background: transparent; }
+.presup-table td { padding: 3px 12px; font-size: 10px; text-align: right; background: transparent; }
 .presup-table .total-row td {
   font-weight: bold; font-size: 15px; color: #00B388;
   border-top: 2px solid #00B388; padding-top: 6px;
@@ -242,22 +249,34 @@ body {
 <body>
 
 <!-- Marca de agua -->
-<div class="watermark">{{ empresa.marca }}</div>
+<div class="watermark"><img src="images/supliese.jpeg" alt=""></div>
 
 <!-- Encabezado fijo (todas las páginas) -->
 <div class="page-header">
   <table class="hdr-table">
     <tr>
       <td class="hdr-logo-cell">
-        <div class="logo-supliese-main">Supliese</div>
-        <span class="logo-tagline">Equipos de lavandería industrial</span>
+        <img src="images/supliese.jpeg" alt="Supliese" style="height:95px;display:block">
       </td>
       <td class="hdr-dots-cell">
-        <svg width="280" height="80" viewBox="0 0 280 80" xmlns="http://www.w3.org/2000/svg">
-          <path d="M50,20 Q100,10 150,25 T250,35 Q270,40 280,50 L280,0 L50,0 Z"
-                fill="#00A8E1" opacity="0.4"/>
-          <path d="M80,35 Q130,25 180,40 T270,55 Q280,60 280,70 L280,20 L80,20 Z"
-                fill="#00B388" opacity="0.3"/>
+        <svg width="380" height="95" viewBox="0 0 380 95" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <g fill="none" stroke-width="0.7" opacity="0.85">
+            <path d="M0,75 C70,30 150,5 230,25 C300,42 350,60 380,40" stroke="#00A8E1"/>
+            <path d="M0,80 C75,35 155,10 235,30 C305,47 355,65 380,45" stroke="#0EAEDC"/>
+            <path d="M0,85 C80,40 160,15 240,35 C310,52 360,70 380,50" stroke="#1AB4D7"/>
+            <path d="M0,70 C70,28 145,0 225,20 C295,38 345,55 380,35" stroke="#27B9D2"/>
+            <path d="M0,65 C68,25 140,-5 220,15 C290,33 340,50 380,30" stroke="#34BECD"/>
+            <path d="M0,90 C82,45 162,20 242,40 C312,57 362,75 380,55" stroke="#41C3C8"/>
+            <path d="M0,60 C65,22 135,-8 215,12 C285,30 335,47 380,25" stroke="#4EC8C3"/>
+            <path d="M0,55 C62,20 130,-10 210,8 C280,26 330,42 380,20" stroke="#5BCDBE"/>
+            <path d="M0,95 C85,50 165,25 245,45 C315,62 365,78 380,60" stroke="#68D2B9"/>
+            <path d="M0,50 C60,16 125,-12 205,6 C275,22 325,38 380,18" stroke="#75D7B4"/>
+            <path d="M0,45 C58,12 120,-15 200,2 C270,18 320,34 380,15" stroke="#82DCAF"/>
+            <path d="M0,40 C55,8 115,-18 195,-2 C265,14 315,30 380,12" stroke="#00B388"/>
+            <path d="M0,78 C72,32 152,8 232,28 C302,45 352,62 380,42" stroke="#1FB590"/>
+            <path d="M0,82 C78,38 158,12 238,32 C308,49 358,67 380,47" stroke="#3DB798"/>
+            <path d="M0,72 C70,30 148,3 228,22 C298,40 348,57 380,38" stroke="#5BBA9F"/>
+          </g>
         </svg>
       </td>
     </tr>

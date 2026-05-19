@@ -1,0 +1,20 @@
+<svg width="200" height="80" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .supliese-main {
+      font-family: Arial, 'Helvetica Neue', sans-serif;
+      font-size: 42px;
+      font-weight: 900;
+      fill: #2B3990;
+      letter-spacing: 1px;
+    }
+    .by-gamesail {
+      font-family: Arial, 'Helvetica Neue', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      fill: #00A8E1;
+      letter-spacing: 2px;
+    }
+  </style>
+  <text x="5" y="45" class="supliese-main">Supliese</text>
+  <text x="10" y="65" class="by-gamesail">by Gamesail</text>
+</svg>

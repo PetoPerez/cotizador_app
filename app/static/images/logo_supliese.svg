@@ -1,0 +1,35 @@
+<svg width="180" height="100" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .logo-circle {
+      fill: none;
+      stroke: #00B388;
+      stroke-width: 8;
+    }
+    .logo-arc {
+      fill: none;
+      stroke: #00B388;
+      stroke-width: 6;
+    }
+    .supliese-text {
+      font-family: Arial, 'Helvetica Neue', sans-serif;
+      font-size: 38px;
+      font-weight: 900;
+      fill: #00A8E1;
+      letter-spacing: 1px;
+    }
+    .tagline-text {
+      font-family: Arial, sans-serif;
+      font-size: 8px;
+      font-weight: 400;
+      fill: #666;
+      letter-spacing: 0.5px;
+    }
+  </style>
+  <!-- Círculo decorativo -->
+  <circle cx="25" cy="30" r="18" class="logo-circle"/>
+  <path d="M 15 45 Q 25 35 35 45" class="logo-arc"/>
+
+  <!-- Texto -->
+  <text x="50" y="40" class="supliese-text">Supliese</text>
+  <text x="50" y="52" class="tagline-text">Equipos de lavandería industrial</text>
+</svg>
