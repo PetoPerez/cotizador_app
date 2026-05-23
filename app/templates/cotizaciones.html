@@ -202,21 +202,21 @@
             <div style="margin-bottom:14px">
               <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500">Empresas para cotizar</div>
               <div style="display:flex;flex-direction:column;gap:6px">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <label id="lbl-clm" style="display:flex;align-items:center;gap:8px;cursor:pointer">
                   <input type="checkbox" id="chk-clm" value="clm" checked onchange="actualizarEmpresas()">
                   <span style="font-size:13px">CLM</span>
                 </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <label id="lbl-supliese-gamesail" style="display:flex;align-items:center;gap:8px;cursor:pointer">
                   <input type="checkbox" id="chk-supliese-gamesail" value="supliese_gamesail" onchange="actualizarEmpresas()">
                   <span style="font-size:13px">Gamesail</span>
                 </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <label id="lbl-supliese" style="display:flex;align-items:center;gap:8px;cursor:pointer">
                   <input type="checkbox" id="chk-supliese" value="supliese" onchange="actualizarEmpresas()">
                   <span style="font-size:13px">Supliese</span>
                 </label>
-                <label style="display:none;align-items:center;gap:8px;cursor:pointer">
-                  <input type="checkbox" id="chk-supliese-gomez" value="supliese_gomez" onchange="actualizarEmpresas()">
-                  <span style="font-size:13px">Supliese Gomez</span>
+                <label id="lbl-servicios-lavanderia" style="display:none;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="chk-servicios-lavanderia" value="servicios_lavanderia" onchange="actualizarEmpresas()">
+                  <span style="font-size:13px">Servicios de Lavandería</span>
                 </label>
               </div>
             </div>
@@ -391,6 +391,7 @@ async function init() {
       apiFetch('/clientes/'),
     ]);
     await loadTipoCambio();
+    configurarEmpresasPorRol();
     renderStats();
     renderTabla(cotizaciones);
   } catch (e) {
@@ -513,7 +514,27 @@ function actualizarEmpresas() {
   if (document.getElementById('chk-clm').checked) empresasSeleccionadas.push('clm');
   if (document.getElementById('chk-supliese-gamesail').checked) empresasSeleccionadas.push('supliese_gamesail');
   if (document.getElementById('chk-supliese').checked) empresasSeleccionadas.push('supliese');
-  if (document.getElementById('chk-supliese-gomez').checked) empresasSeleccionadas.push('supliese_gomez');
+  if (document.getElementById('chk-servicios-lavanderia').checked) empresasSeleccionadas.push('servicios_lavanderia');
+}
+
+function configurarEmpresasPorRol() {
+  const rol = user.rol;
+  const showServicios = rol === 'admin' || rol === 'servicios';
+  const showVentas    = rol === 'admin' || rol === 'vendedor';
+
+  document.getElementById('lbl-clm').style.display               = showVentas    ? 'flex' : 'none';
+  document.getElementById('lbl-supliese-gamesail').style.display = showVentas    ? 'flex' : 'none';
+  document.getElementById('lbl-supliese').style.display          = showVentas    ? 'flex' : 'none';
+  document.getElementById('lbl-servicios-lavanderia').style.display = showServicios ? 'flex' : 'none';
+
+  // Rol servicios: marcar por defecto su empresa y desmarcar las demás
+  if (rol === 'servicios') {
+    document.getElementById('chk-clm').checked = false;
+    document.getElementById('chk-supliese-gamesail').checked = false;
+    document.getElementById('chk-supliese').checked = false;
+    document.getElementById('chk-servicios-lavanderia').checked = true;
+  }
+  actualizarEmpresas();
 }
 
 // ─── Nueva cotización ─────────────────────────────────────

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Cotización Servicios de Lavandería</title>
+<style>
+
+@page {
+    size: A4;
+    margin: 0;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #fff;
+    color: #222;
+    font-size: 9px;
+}
+
+.page {
+    position: relative;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #fff;
+    overflow: hidden;
+}
+
+.page::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('images/supliese.jpeg');
+    background-position: center 55%;
+    background-repeat: no-repeat;
+    background-size: 520px auto;
+    opacity: 0.10;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.content {
+    position: relative;
+    z-index: 1;
+    padding: 10mm 8mm;
+}
+
+/* ══════════════════════════════════════
+   HEADER: 6 LOGOS
+   ══════════════════════════════════════ */
+.brands-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 2px solid #1a1a1a;
+    margin-bottom: 0;
+    background: transparent;
+}
+.brands-table td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 6px 4px;
+    width: 16.66%;
+    background: transparent;
+}
+.brands-table img {
+    max-height: 38px;
+    max-width: 95%;
+    object-fit: contain;
+    display: inline-block;
+}
+
+/* ══════════════════════════════════════
+   CABECERA: EMPRESA + FECHA + No. PEDIDO
+   ══════════════════════════════════════ */
+.head-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 2px solid #1a1a1a;
+    border-top: none;
+    background: transparent;
+}
+.head-table td {
+    border: 1px solid #1a1a1a;
+    padding: 4px 8px;
+    background: transparent;
+}
+.head-empresa {
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+    width: 60%;
+}
+.head-label {
+    background: #d9e8f5 !important;
+    text-align: center;
+    font-weight: bold;
+    font-size: 8px;
+    width: 12%;
+}
+.head-value {
+    text-align: center;
+    font-weight: bold;
+    font-size: 10px;
+    width: 14%;
+}
+
+/* ══════════════════════════════════════
+   SECCIONES (CONTACTO / ENTREGA / FACTURACIÓN)
+   ══════════════════════════════════════ */
+.section-title {
+    background: #d9e8f5 !important;
+    border: 1px solid #1a1a1a;
+    border-top: none;
+    text-align: center;
+    font-weight: bold;
+    font-size: 9.5px;
+    padding: 3px;
+    letter-spacing: 0.3px;
+}
+
+.section-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+}
+.section-table td {
+    border: 1px solid #1a1a1a;
+    padding: 3px 6px;
+    background: transparent;
+    font-size: 8.5px;
+    vertical-align: middle;
+    height: 18px;
+}
+.section-table .lbl {
+    font-weight: bold;
+    width: 16%;
+    background: transparent !important;
+}
+.section-table .val {
+    width: 17%;
+}
+.section-table .lbl-narrow {
+    font-weight: bold;
+    width: 11%;
+}
+
+/* ══════════════════════════════════════
+   TABLA DE PRODUCTOS
+   ══════════════════════════════════════ */
+.products-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 2px;
+    background: transparent;
+}
+.products-table th {
+    background: #d9e8f5;
+    border: 1px solid #1a1a1a;
+    padding: 4px 3px;
+    font-size: 9px;
+    font-weight: bold;
+    text-align: center;
+}
+.products-table th.descripcion-th {
+    font-style: italic;
+}
+.products-table td {
+    border: 1px solid #1a1a1a;
+    padding: 3px 4px;
+    font-size: 8px;
+    vertical-align: top;
+    background: transparent;
+    height: 22px;
+}
+.col-cant   { width: 7%; text-align: center; }
+.col-equipo { width: 16%; }
+.col-parte  { width: 13%; text-align: center; }
+.col-desc   { width: 38%; }
+.col-precio { width: 13%; text-align: right; }
+.col-imp    { width: 13%; text-align: right; }
+
+.subtotal-row td {
+    font-weight: bold;
+    background: #f5f5f5 !important;
+    text-align: right;
+}
+
+/* ══════════════════════════════════════
+   OBSERVACIONES + TOTALES
+   ══════════════════════════════════════ */
+.bottom-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+    background: transparent;
+}
+.bottom-table td {
+    border: 1px solid #1a1a1a;
+    padding: 4px 6px;
+    background: transparent;
+    font-size: 8.5px;
+    vertical-align: top;
+}
+.obs-cell {
+    width: 60%;
+    height: 90px;
+}
+.obs-label {
+    background: #d9e8f5 !important;
+    font-weight: bold;
+    text-align: left;
+}
+.totals-lbl {
+    width: 20%;
+    background: #d9e8f5 !important;
+    font-weight: bold;
+    text-align: right;
+}
+.totals-val {
+    width: 20%;
+    text-align: right;
+    font-family: 'DM Mono', monospace;
+}
+.totals-val.grand {
+    font-weight: bold;
+    font-size: 11px;
+}
+
+/* ══════════════════════════════════════
+   FOOTER FINAL
+   ══════════════════════════════════════ */
+.footer-info {
+    margin-top: 8px;
+    border: 1px solid #1a1a1a;
+    background: transparent;
+    width: 100%;
+    border-collapse: collapse;
+}
+.footer-info td {
+    border: 1px solid #1a1a1a;
+    padding: 4px 6px;
+    background: transparent;
+    font-size: 8px;
+    text-align: center;
+}
+.footer-info .titulo-tec {
+    font-weight: bold;
+    background: #d9e8f5 !important;
+}
+.footer-info .vigencia {
+    font-weight: bold;
+}
+
+</style>
+</head>
+<body>
+
+<section class="page">
+
+<div class="content">
+
+<!-- HEADER: 6 LOGOS DE MARCAS -->
+<table class="brands-table">
+    <tr>
+        <td><img src="images/girbau.jpeg" alt="Girbau"></td>
+        <td><img src="images/maytag.jpeg" alt="Maytag"></td>
+        <td><img src="images/LG.jpeg" alt="LG"></td>
+        <td><img src="images/gamesail.jpeg" alt="Gamesail"></td>
+        <td><img src="images/adc.jpeg" alt="ADC"></td>
+        <td><img src="images/csf.jpeg" alt="CSF"></td>
+    </tr>
+</table>
+
+<!-- CABECERA EMPRESA -->
+<table class="head-table">
+    <tr>
+        <td class="head-empresa" rowspan="2">{{ empresa.nombre }}</td>
+        <td class="head-label">FECHA</td>
+        <td class="head-label">No. DE PEDIDO</td>
+    </tr>
+    <tr>
+        <td class="head-value">{{ cot.fecha.day }}/{{ cot.fecha.month }}/{{ cot.fecha.year }}</td>
+        <td class="head-value">{{ cot.numero_cotizacion }}</td>
+    </tr>
+</table>
+
+<!-- DATOS DEL CONTACTO -->
+<div class="section-title">DATOS DEL CONTACTO</div>
+<table class="section-table">
+    <tr>
+        <td class="lbl">NOMBRE:</td>
+        <td colspan="3">{% if cot.cliente.atencion_titulo %}{{ cot.cliente.atencion_titulo }} {% endif %}{{ cot.cliente.atencion_nombre or '' }}</td>
+        <td class="lbl">RELACIÓN:</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td class="lbl">TELÉFONO DE CONTACTO:</td>
+        <td>{{ cot.cliente.telefono or '' }}</td>
+        <td class="lbl">CORREO ELECTRÓNICO:</td>
+        <td>{{ cot.cliente.email or '' }}</td>
+        <td class="lbl">CARGO QUE OCUPA:</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td class="lbl">DÍAS DE CONTACTO:</td>
+        <td>lunes - viernes</td>
+        <td class="lbl">HORARIO DE CONTACTO:</td>
+        <td>9:00 - 18:00</td>
+        <td></td>
+        <td></td>
+    </tr>
+</table>
+
+<!-- DOMICILIO DE ENTREGA -->
+<div class="section-title">DOMICILIO DE ENTREGA:</div>
+<table class="section-table">
+    <tr>
+        <td class="lbl">NOMBRE:</td>
+        <td colspan="5">{{ cot.cliente.nombre_razon_social }}</td>
+    </tr>
+    <tr>
+        <td class="lbl">DIRECCIÓN:</td>
+        <td colspan="3">{{ cot.cliente.domicilio_entrega or '' }}</td>
+        <td class="lbl">COLONIA:</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td class="lbl">CIUDAD:</td>
+        <td>{{ cot.cliente.ciudad or '' }}</td>
+        <td class="lbl">ESTADO:</td>
+        <td>{{ cot.cliente.estado or '' }}</td>
+        <td class="lbl">CÓDIGO POSTAL:</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td class="lbl">ENTRE LAS CALLES:</td>
+        <td colspan="3"></td>
+        <td class="lbl">TELÉFONO:</td>
+        <td>{{ cot.cliente.telefono or '' }}</td>
+    </tr>
+</table>
+
+<!-- DATOS DE FACTURACIÓN -->
+<div class="section-title">DATOS DE FACTURACIÓN:</div>
+<table class="section-table">
+    <tr>
+        <td class="lbl">NOMBRE:</td>
+        <td colspan="5">{{ cot.cliente.nombre_razon_social }}</td>
+    </tr>
+    <tr>
+        <td class="lbl">DIRECCIÓN:</td>
+        <td colspan="3">{{ cot.cliente.domicilio_empresa or '' }}</td>
+        <td class="lbl">COLONIA:</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td class="lbl">CIUDAD:</td>
+        <td>{{ cot.cliente.ciudad or '' }}</td>
+        <td class="lbl">ESTADO:</td>
+        <td>{{ cot.cliente.estado or '' }}</td>
+        <td class="lbl">CÓDIGO POSTAL:</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td class="lbl">RFC:</td>
+        <td>{{ cot.cliente.rfc or '' }}</td>
+        <td class="lbl">E MAIL:</td>
+        <td>{{ cot.cliente.email or '' }}</td>
+        <td class="lbl">MÉTODO DE PAGO:</td>
+        <td style="font-size:7.5px">PUE - Pago en una sola exhibición.</td>
+    </tr>
+    <tr>
+        <td class="lbl">USO DEL CFDI:</td>
+        <td colspan="3" style="font-size:7.5px">G03 - Gastos en general. &nbsp;·&nbsp; <strong>FORMA DE PAGO:</strong> 03 - Transferencia electrónica de fondos.</td>
+        <td class="lbl">TIPO DE CAMBIO:</td>
+        <td>{% if cot.tipo_cambio %}${{ "{:,.4f}".format(float(cot.tipo_cambio)) }}{% endif %}</td>
+    </tr>
+</table>
+
+<!-- TABLA DE PRODUCTOS -->
+<table class="products-table">
+    <thead>
+        <tr>
+            <th class="col-cant">CANTIDAD</th>
+            <th class="col-equipo">EQUIPO</th>
+            <th class="col-parte">No. PARTE</th>
+            <th class="col-desc descripcion-th">DESCRIPCIÓN</th>
+            <th class="col-precio">P. UNITARIO</th>
+            <th class="col-imp">IMPORTE</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in cot.items %}
+        <tr>
+            <td class="col-cant">{{ item.cantidad }}</td>
+            <td class="col-equipo">{{ item.producto.marca }} {{ item.producto.equipo }}</td>
+            <td class="col-parte">{{ item.producto.modelo }}</td>
+            <td class="col-desc">
+                {%- if item.producto.descripcion -%}
+                  {{ item.producto.descripcion.replace('\n', ' ').replace('*', '').strip() }}
+                {%- endif -%}
+            </td>
+            <td class="col-precio">${{ "{:,.2f}".format(float(item.precio_final) * tc) }}</td>
+            <td class="col-imp">${{ "{:,.2f}".format(float(item.importe) * tc) }}</td>
+        </tr>
+        {% endfor %}
+        {# Filas vacías para llegar a ~14 renglones #}
+        {% set vacias = 14 - cot.items|length %}
+        {% if vacias > 0 %}
+          {% for _ in range(vacias) %}
+          <tr>
+            <td class="col-cant">&nbsp;</td>
+            <td class="col-equipo"></td>
+            <td class="col-parte"></td>
+            <td class="col-desc"></td>
+            <td class="col-precio">$0.00</td>
+            <td class="col-imp">$0.00</td>
+          </tr>
+          {% endfor %}
+        {% endif %}
+        <tr class="subtotal-row">
+            <td colspan="3"></td>
+            <td style="text-align:right;font-weight:bold">Subtotal</td>
+            <td></td>
+            <td class="col-imp">${{ "{:,.2f}".format(float(cot.subtotal) * tc) }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- OBSERVACIONES + TOTALES -->
+<table class="bottom-table">
+    <tr>
+        <td class="obs-label" colspan="2">OBSERVACIONES:</td>
+        <td class="totals-lbl">SUB TOTAL:</td>
+        <td class="totals-val">${{ "{:,.2f}".format(float(cot.subtotal) * tc) }}</td>
+    </tr>
+    <tr>
+        <td class="obs-cell" colspan="2" rowspan="4" style="vertical-align:top">
+            {% if cot.notas %}{{ cot.notas }}{% endif %}
+            <div style="margin-top:6px;font-size:8px;text-align:center">
+                <strong>{{ empresa.nombre }}.</strong> RFC: SGO210826M44
+            </div>
+        </td>
+        <td class="totals-lbl">I V A:</td>
+        <td class="totals-val">${{ "{:,.2f}".format(float(cot.iva) * tc) }}</td>
+    </tr>
+    <tr>
+        <td class="totals-lbl">MN TOTAL:</td>
+        <td class="totals-val grand">${{ "{:,.2f}".format(float(cot.total) * tc) }}</td>
+    </tr>
+    <tr>
+        <td class="totals-lbl">ANTICIPO:</td>
+        <td class="totals-val"></td>
+    </tr>
+    <tr>
+        <td class="totals-lbl">SALDO:</td>
+        <td class="totals-val"></td>
+    </tr>
+</table>
+
+<!-- FOOTER FINAL: SERVICIO TÉCNICO + VIGENCIA -->
+<table class="footer-info">
+    <tr>
+        <td colspan="2" style="text-align:left;font-size:8px;padding:6px 8px">
+            Espero contar con la oportunidad de serle de utilidad y asesorarlo de la mejor manera para que pueda recibir la solución
+            que usted realmente necesita y con las mejores condiciones del mercado.
+        </td>
+        <td class="titulo-tec" colspan="2">SERVICIO TECNICO Y POSVENTA</td>
+    </tr>
+    <tr>
+        <td class="vigencia" colspan="2">VIGENCIA DE COTIZACIÓN 15 DIAS</td>
+        <td colspan="2" style="font-size:8px;font-weight:bold">
+            {{ cot.vendedor.nombre }} &nbsp;&nbsp; {% if empresa.telefono %}CEL: {{ empresa.telefono }}{% endif %}
+        </td>
+    </tr>
+</table>
+
+</div>
+
+</section>
+
+</body>
+</html>

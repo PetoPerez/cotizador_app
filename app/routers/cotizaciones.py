@@ -39,9 +39,8 @@ def _cot_options():
 
 @router.get("/", response_model=list[schemas.CotizacionOut])
 def listar(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    # Todos los roles (admin, vendedor, servicios) ven todas las cotizaciones.
     query = db.query(models.Cotizacion).options(*_cot_options())
-    if current_user.rol != "admin":
-        query = query.filter(models.Cotizacion.vendedor_id == current_user.id)
     return query.order_by(models.Cotizacion.created_at.desc()).all()
 
 
@@ -52,8 +51,6 @@ def obtener(id: str, db: Session = Depends(get_db), current_user: models.Usuario
              .filter(models.Cotizacion.id == id).first())
     if not cot:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
-    if current_user.rol != "admin" and str(cot.vendedor_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Sin acceso")
     return cot
 
 
@@ -61,6 +58,13 @@ def obtener(id: str, db: Session = Depends(get_db), current_user: models.Usuario
 def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     if not data.items:
         raise HTTPException(status_code=400, detail="La cotización debe tener al menos un ítem")
+
+    # Validar permisos por rol y empresa
+    empresas_set = set(data.empresas)
+    if current_user.rol == "vendedor" and "servicios_lavanderia" in empresas_set:
+        raise HTTPException(status_code=403, detail="Los vendedores no pueden cotizar con Servicios de Lavandería")
+    if current_user.rol == "servicios" and empresas_set - {"servicios_lavanderia"}:
+        raise HTTPException(status_code=403, detail="El rol Servicios solo puede cotizar con Servicios de Lavandería")
 
     cliente = db.query(models.Cliente).filter(models.Cliente.id == data.cliente_id).first()
     if not cliente:
@@ -151,8 +155,6 @@ def descargar_pdf(id: str, db: Session = Depends(get_db), current_user: models.U
     cot = db.query(models.Cotizacion).filter(models.Cotizacion.id == id).first()
     if not cot:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
-    if current_user.rol != "admin" and str(cot.vendedor_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Sin acceso")
 
     pdf_bytes = generar_pdf(cot)
     return StreamingResponse(

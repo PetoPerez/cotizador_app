@@ -69,6 +69,7 @@
       <label class="form-label">Rol</label>
       <select class="form-control" id="f-rol">
         <option value="vendedor">Vendedor</option>
+        <option value="servicios">Servicios</option>
         <option value="admin">Admin</option>
       </select>
     </div>
@@ -119,9 +120,11 @@ function renderTabla() {
     <tr>
       <td><strong style="color:var(--text)">${u.nombre}</strong></td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${u.email}</td>
-      <td>${u.rol === 'admin'
-        ? '<span class="badge badge-blue">Admin</span>'
-        : '<span class="badge badge-gray">Vendedor</span>'}</td>
+      <td>${
+        u.rol === 'admin'     ? '<span class="badge badge-blue">Admin</span>' :
+        u.rol === 'servicios' ? '<span class="badge badge-green">Servicios</span>' :
+                                '<span class="badge badge-gray">Vendedor</span>'
+      }</td>
       <td style="font-family:'DM Mono',monospace;color:var(--danger)">${u.margen_min}%</td>
       <td style="font-family:'DM Mono',monospace;color:var(--accent2)">+${u.margen_max}%</td>
       <td>${u.activo

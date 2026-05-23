@@ -23,7 +23,7 @@ class UsuarioCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
-    rol: str = Field("vendedor", pattern="^(admin|vendedor)$")
+    rol: str = Field("vendedor", pattern="^(admin|vendedor|servicios)$")
     margen_min: float = Field(-5.0, ge=-100, le=0)
     margen_max: float = Field(5.0, ge=0, le=100)
 
@@ -31,7 +31,7 @@ class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=1, max_length=100)
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(None, min_length=6, max_length=100)
-    rol: Optional[str] = Field(None, pattern="^(admin|vendedor)$")
+    rol: Optional[str] = Field(None, pattern="^(admin|vendedor|servicios)$")
     margen_min: Optional[float] = Field(None, ge=-100, le=0)
     margen_max: Optional[float] = Field(None, ge=0, le=100)
     activo: Optional[bool] = None
@@ -155,7 +155,7 @@ class CotizacionCreate(BaseModel):
     notas: Optional[str] = None
     moneda: str = Field('MXN', pattern='^(MXN|USD)$')
     tipo_cambio: Optional[float] = None
-    empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'supliese_gomez']] = Field(default=['clm'])
+    empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'servicios_lavanderia']] = Field(default=['clm'])
 
 class CotizacionOut(BaseModel):
     id: UUID

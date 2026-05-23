@@ -20,7 +20,7 @@ def generar_pdf(cotizacion) -> bytes:
         'clm': 'cotizacion_clm.html',
         'supliese_gamesail': 'cotizacion_supliese_gamesail.html',
         'supliese': 'cotizacion_supliese.html',
-        'supliese_gomez': 'cotizacion_supliese_gomez.html',
+        'servicios_lavanderia': 'cotizacion_servicios_lavanderia.html',
     }
     template_name = template_map.get(empresa_code, 'cotizacion_clm.html')
 
