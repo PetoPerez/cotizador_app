@@ -24,9 +24,13 @@ class Usuario(Base):
     margen_min = Column(Numeric(5, 2), nullable=False, default=-5.00)
     margen_max = Column(Numeric(5, 2), nullable=False, default=5.00)
     activo = Column(Boolean, nullable=False, default=True)
+    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id"))
+    numero_corto = Column(Integer, unique=True)
+    cotizaciones_count = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cotizaciones = relationship("Cotizacion", back_populates="vendedor")
+    empresa = relationship("Empresa")
 
 
 class Cliente(Base):
@@ -49,6 +53,38 @@ class Cliente(Base):
     cotizaciones = relationship("Cotizacion", back_populates="cliente")
 
 
+class Empresa(Base):
+    __tablename__ = "empresas"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    codigo = Column(String(30), nullable=False, unique=True)
+    acronimo = Column(String(10), nullable=False, unique=True)
+    nombre = Column(String(200), nullable=False)
+    nombre_corto = Column(String(50))
+    direccion = Column(Text)
+    rfc = Column(String(20))
+    telefono = Column(String(30))
+    email = Column(String(150))
+    logo_url = Column(Text)
+    logo_decoracion_url = Column(Text)
+    template_pdf = Column(String(100))
+    activa = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+
+
+class ProductoEmpresa(Base):
+    __tablename__ = "producto_empresa"
+
+    producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id", ondelete="CASCADE"), primary_key=True)
+    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="CASCADE"), primary_key=True)
+    precio_lista = Column(Numeric(12, 2), nullable=False)
+    activo = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+
+    producto = relationship("Producto")
+    empresa = relationship("Empresa")
+
+
 class ProductoImagen(Base):
     __tablename__ = "producto_imagenes"
 
@@ -69,13 +105,14 @@ class Producto(Base):
     equipo = Column(String(100), nullable=False)
     modelo = Column(String(100), nullable=False)
     descripcion = Column(Text)
-    precio_lista = Column(Numeric(12, 2), nullable=False)
+    precio_lista = Column(Numeric(12, 2), nullable=True)  # legacy: precio por empresa vive en producto_empresa
     imagen_url = Column(Text)
     activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     imagenes = relationship("ProductoImagen", back_populates="producto",
                             order_by=ProductoImagen.orden, cascade="all, delete-orphan")
+    empresas = relationship("ProductoEmpresa", cascade="all, delete-orphan", overlaps="producto,empresa")
 
 
 class Cotizacion(Base):
@@ -94,11 +131,13 @@ class Cotizacion(Base):
     vigencia = Column(DateTime(timezone=True))
     moneda = Column(String(3), nullable=False, default='MXN')
     tipo_cambio = Column(Numeric(10, 4), nullable=True)
-    empresa = Column(String(30), nullable=False, default='clm')  # clm, supliese_gamesail, supliese, supliese_gomez
+    empresa = Column(String(30), nullable=False, default='clm')  # legacy: clm, supliese_gamesail, supliese, supliese_gomez
+    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id"))
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cliente = relationship("Cliente", back_populates="cotizaciones")
     vendedor = relationship("Usuario", back_populates="cotizaciones")
+    empresa_rel = relationship("Empresa", foreign_keys=[empresa_id])
     items = relationship("CotizacionItem", back_populates="cotizacion", cascade="all, delete-orphan")
 
 

@@ -26,4 +26,6 @@ def login(request: Request, data: schemas.LoginRequest, db: Session = Depends(ge
         "nombre": user.nombre,
         "margen_min": float(user.margen_min),
         "margen_max": float(user.margen_max),
+        "empresa_id": str(user.empresa_id) if user.empresa_id else None,
+        "numero_corto": user.numero_corto,
     }

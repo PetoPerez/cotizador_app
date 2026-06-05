@@ -48,7 +48,7 @@
               <th>Equipo</th>
               <th>Modelo</th>
               <th>Descripción</th>
-              <th>Precio lista</th>
+              <th>Precios por empresa</th>
               <th>Estado</th>
               <th></th>
             </tr>
@@ -103,8 +103,9 @@
       <textarea class="form-control" id="f-descripcion" rows="3" placeholder="Descripción del producto..."></textarea>
     </div>
     <div class="form-group">
-      <label class="form-label">Precio de lista (MXN)</label>
-      <input type="number" class="form-control" id="f-precio" placeholder="0.00" step="0.01" min="0">
+      <label class="form-label">Disponibilidad y precio por empresa (MXN)</label>
+      <div id="empresas-grid" style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--border);border-radius:8px;padding:10px"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">Marca la casilla para activar la empresa y captura su precio. Las desmarcadas no se ofrecen al cotizar.</div>
     </div>
     <div class="flex gap-8 mt-16" style="justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
@@ -119,16 +120,48 @@ requireAdmin();
 document.getElementById('sidebar-root').innerHTML = renderSidebar('productos');
 
 let productos = [];
-let editId = null;
+let empresas  = [];
+let editId    = null;
 
 async function cargar() {
   try {
-    const data = await apiFetch('/productos/');
-    productos = Array.isArray(data) ? data : [];
+    const [emps, prods] = await Promise.all([
+      apiFetch('/empresas/'),
+      apiFetch('/productos/'),
+    ]);
+    empresas  = Array.isArray(emps)  ? emps  : [];
+    productos = Array.isArray(prods) ? prods : [];
+    renderEmpresasGrid();
     renderTabla(productos);
   } catch (e) {
     showAlert(e.message);
   }
+}
+
+function renderEmpresasGrid() {
+  const grid = document.getElementById('empresas-grid');
+  grid.innerHTML = empresas.map(e => `
+    <div style="display:grid;grid-template-columns:28px 1fr 150px;gap:10px;align-items:center">
+      <input type="checkbox" id="emp-chk-${e.codigo}" data-empresa-id="${e.id}">
+      <label for="emp-chk-${e.codigo}" style="font-size:13px;cursor:pointer">
+        <strong>${e.acronimo}</strong> <span style="color:var(--text3)">— ${e.nombre}</span>
+      </label>
+      <input type="number" class="form-control" id="emp-precio-${e.codigo}"
+             placeholder="0.00" step="0.01" min="0" style="padding:6px 8px;font-size:13px">
+    </div>
+  `).join('');
+}
+
+function preciosResumen(p) {
+  if (!p.empresas || !p.empresas.length) return '<span style="color:var(--text3)">—</span>';
+  const partes = p.empresas
+    .filter(pe => pe.activo)
+    .map(pe => {
+      const emp = empresas.find(e => e.id === pe.empresa_id);
+      const acr = emp ? emp.acronimo : '?';
+      return `<span style="font-family:'DM Mono',monospace;font-size:11px"><strong style="color:var(--accent2)">${acr}</strong> ${formatMXN(pe.precio_lista)}</span>`;
+    });
+  return partes.length ? partes.join(' &nbsp;·&nbsp; ') : '<span style="color:var(--text3)">sin precios</span>';
 }
 
 function filtrar() {
@@ -177,7 +210,7 @@ function renderTabla(data) {
       <td>${p.equipo}</td>
       <td><span style="font-family:'DM Mono',monospace;font-size:12px">${p.modelo}</span></td>
       <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.descripcion || '—'}</td>
-      <td><strong style="color:var(--accent2)">${formatMXN(p.precio_lista)}</strong></td>
+      <td>${preciosResumen(p)}</td>
       <td>${p.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-red">Inactivo</span>'}</td>
       <td>
         <div class="flex gap-8">
@@ -278,7 +311,13 @@ function openModal(id = null) {
   editId = id;
   document.getElementById('modal-title').textContent = id ? 'Editar producto' : 'Nuevo producto';
   if (!id) {
-    ['f-marca','f-equipo','f-modelo','f-descripcion','f-precio'].forEach(f => document.getElementById(f).value = '');
+    ['f-marca','f-equipo','f-modelo','f-descripcion'].forEach(f => document.getElementById(f).value = '');
+    empresas.forEach(e => {
+      const chk = document.getElementById(`emp-chk-${e.codigo}`);
+      const pre = document.getElementById(`emp-precio-${e.codigo}`);
+      if (chk) chk.checked = false;
+      if (pre) pre.value = '';
+    });
   }
   document.getElementById('modal').classList.add('open');
 }
@@ -295,19 +334,42 @@ function editar(id) {
   document.getElementById('f-equipo').value = p.equipo;
   document.getElementById('f-modelo').value = p.modelo;
   document.getElementById('f-descripcion').value = p.descripcion || '';
-  document.getElementById('f-precio').value = p.precio_lista;
+  empresas.forEach(e => {
+    const pe = (p.empresas || []).find(x => x.empresa_id === e.id);
+    const chk = document.getElementById(`emp-chk-${e.codigo}`);
+    const pre = document.getElementById(`emp-precio-${e.codigo}`);
+    if (chk) chk.checked = pe ? pe.activo : false;
+    if (pre) pre.value = pe ? pe.precio_lista : '';
+  });
   openModal(id);
 }
 
 async function guardar() {
+  const empresasInput = [];
+  for (const e of empresas) {
+    const chk = document.getElementById(`emp-chk-${e.codigo}`);
+    const pre = document.getElementById(`emp-precio-${e.codigo}`);
+    if (chk && chk.checked) {
+      const precio = parseFloat(pre.value);
+      if (isNaN(precio) || precio <= 0) {
+        showAlert(`Captura un precio válido para ${e.acronimo}`, 'danger', 'modal-alert');
+        return;
+      }
+      empresasInput.push({ empresa_id: e.id, precio_lista: precio, activo: true });
+    }
+  }
+  if (!empresasInput.length) {
+    showAlert('Asigna el producto al menos a una empresa', 'danger', 'modal-alert');
+    return;
+  }
   const body = {
     marca: document.getElementById('f-marca').value.trim(),
     equipo: document.getElementById('f-equipo').value.trim(),
     modelo: document.getElementById('f-modelo').value.trim(),
-    descripcion: document.getElementById('f-descripcion').value.trim(),
-    precio_lista: parseFloat(document.getElementById('f-precio').value),
+    descripcion: document.getElementById('f-descripcion').value.trim() || null,
+    empresas: empresasInput,
   };
-  if (!body.marca || !body.equipo || !body.modelo || isNaN(body.precio_lista)) {
+  if (!body.marca || !body.equipo || !body.modelo) {
     showAlert('Completa todos los campos requeridos', 'danger', 'modal-alert');
     return;
   }

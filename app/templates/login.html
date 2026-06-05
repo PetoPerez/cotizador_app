@@ -164,6 +164,8 @@ async function doLogin() {
       rol: data.rol,
       margen_min: data.margen_min,
       margen_max: data.margen_max,
+      empresa_id: data.empresa_id,
+      numero_corto: data.numero_corto,
     }));
     window.location.href = '/cotizaciones';
   } catch (err) {

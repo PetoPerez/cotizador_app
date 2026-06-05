@@ -27,9 +27,11 @@
         <table>
           <thead>
             <tr>
+              <th>#</th>
               <th>Nombre</th>
               <th>Email</th>
               <th>Rol</th>
+              <th>Empresa</th>
               <th>Margen mín</th>
               <th>Margen máx</th>
               <th>Estado</th>
@@ -37,7 +39,7 @@
             </tr>
           </thead>
           <tbody id="tabla-body">
-            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+            <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -65,13 +67,26 @@
       <label class="form-label">Contraseña</label>
       <input type="password" class="form-control" id="f-password" placeholder="Mínimo 6 caracteres">
     </div>
-    <div class="form-group">
-      <label class="form-label">Rol</label>
-      <select class="form-control" id="f-rol">
-        <option value="vendedor">Vendedor</option>
-        <option value="servicios">Servicios</option>
-        <option value="admin">Admin</option>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">Rol</label>
+        <select class="form-control" id="f-rol" onchange="onRolChange()">
+          <option value="vendedor">Vendedor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group" id="numero-corto-group">
+        <label class="form-label"># vendedor</label>
+        <input type="number" class="form-control" id="f-numero-corto" placeholder="Auto" min="0" max="9999">
+        <p style="font-size:11px;color:var(--text3);margin-top:4px">Si lo dejas vacío, se asigna automáticamente el siguiente número disponible.</p>
+      </div>
+    </div>
+    <div class="form-group" id="empresa-group">
+      <label class="form-label">Empresa asignada</label>
+      <select class="form-control" id="f-empresa">
+        <option value="">— Selecciona empresa —</option>
       </select>
+      <p style="font-size:11px;color:var(--text3);margin-top:4px">Solo se aplica al rol Vendedor. Admins no requieren empresa.</p>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="form-group">
@@ -99,32 +114,55 @@ requireAdmin();
 document.getElementById('sidebar-root').innerHTML = renderSidebar('usuarios');
 
 let usuarios = [];
-let editId = null;
+let empresas = [];
+let editId   = null;
 
 async function cargar() {
   try {
-    usuarios = await apiFetch('/usuarios/');
+    const [us, emps] = await Promise.all([
+      apiFetch('/usuarios/'),
+      apiFetch('/empresas/'),
+    ]);
+    usuarios = us;
+    empresas = emps;
+    rellenarSelectEmpresas();
     renderTabla();
   } catch (e) {
     showAlert(e.message);
   }
 }
 
+function rellenarSelectEmpresas() {
+  const sel = document.getElementById('f-empresa');
+  sel.innerHTML = '<option value="">— Selecciona empresa —</option>' +
+    empresas.map(e => `<option value="${e.id}">${e.acronimo} — ${e.nombre}</option>`).join('');
+}
+
+function onRolChange() {
+  const rol = document.getElementById('f-rol').value;
+  document.getElementById('empresa-group').style.display = (rol === 'vendedor') ? 'block' : 'none';
+}
+
+function nombreEmpresa(empresa_id) {
+  const e = empresas.find(x => x.id === empresa_id);
+  return e ? `${e.acronimo}` : '—';
+}
+
 function renderTabla() {
   const tbody = document.getElementById('tabla-body');
   if (!usuarios.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Sin usuarios</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Sin usuarios</td></tr>`;
     return;
   }
   tbody.innerHTML = usuarios.map(u => `
     <tr>
+      <td style="font-family:'DM Mono',monospace;font-weight:600">${u.numero_corto ?? '—'}</td>
       <td><strong style="color:var(--text)">${u.nombre}</strong></td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${u.email}</td>
-      <td>${
-        u.rol === 'admin'     ? '<span class="badge badge-blue">Admin</span>' :
-        u.rol === 'servicios' ? '<span class="badge badge-green">Servicios</span>' :
-                                '<span class="badge badge-gray">Vendedor</span>'
-      }</td>
+      <td>${u.rol === 'admin'
+        ? '<span class="badge badge-blue">Admin</span>'
+        : '<span class="badge badge-gray">Vendedor</span>'}</td>
+      <td>${u.rol === 'admin' ? '<span style="color:var(--text3)">—</span>' : `<strong>${nombreEmpresa(u.empresa_id)}</strong>`}</td>
       <td style="font-family:'DM Mono',monospace;color:var(--danger)">${u.margen_min}%</td>
       <td style="font-family:'DM Mono',monospace;color:var(--accent2)">+${u.margen_max}%</td>
       <td>${u.activo
@@ -147,11 +185,13 @@ function openModal(id = null) {
   document.getElementById('modal-title').textContent = id ? 'Editar usuario' : 'Nuevo usuario';
   document.getElementById('pwd-group').style.display = id ? 'none' : 'block';
   if (!id) {
-    ['f-nombre','f-email','f-password'].forEach(f => document.getElementById(f).value = '');
+    ['f-nombre','f-email','f-password','f-numero-corto'].forEach(f => document.getElementById(f).value = '');
     document.getElementById('f-rol').value = 'vendedor';
+    document.getElementById('f-empresa').value = '';
     document.getElementById('f-margen-min').value = -5;
     document.getElementById('f-margen-max').value = 5;
   }
+  onRolChange();
   document.getElementById('modal').classList.add('open');
 }
 
@@ -166,6 +206,8 @@ function editar(id) {
   document.getElementById('f-nombre').value = u.nombre;
   document.getElementById('f-email').value = u.email;
   document.getElementById('f-rol').value = u.rol;
+  document.getElementById('f-empresa').value = u.empresa_id || '';
+  document.getElementById('f-numero-corto').value = u.numero_corto ?? '';
   document.getElementById('f-margen-min').value = u.margen_min;
   document.getElementById('f-margen-max').value = u.margen_max;
   openModal(id);
@@ -180,12 +222,24 @@ async function guardar() {
     return;
   }
 
+  const rol           = document.getElementById('f-rol').value;
+  const empresaId     = document.getElementById('f-empresa').value || null;
+  const numeroCortoIn = document.getElementById('f-numero-corto').value;
+  const numeroCorto   = numeroCortoIn === '' ? null : parseInt(numeroCortoIn, 10);
+
+  if (rol === 'vendedor' && !empresaId) {
+    showAlert('Asigna una empresa al vendedor', 'danger', 'modal-alert');
+    return;
+  }
+
   const body = {
     nombre: document.getElementById('f-nombre').value.trim(),
     email: document.getElementById('f-email').value.trim(),
-    rol: document.getElementById('f-rol').value,
+    rol: rol,
     margen_min: margenMin,
     margen_max: margenMax,
+    empresa_id: rol === 'vendedor' ? empresaId : null,
+    numero_corto: numeroCorto,
   };
 
   if (!editId) {

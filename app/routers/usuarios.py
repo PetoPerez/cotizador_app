@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import schemas
@@ -17,6 +18,13 @@ def crear(data: schemas.UsuarioCreate, db: Session = Depends(get_db), _=Depends(
         raise HTTPException(status_code=400, detail="Email ya registrado")
     if data.margen_min > data.margen_max:
         raise HTTPException(status_code=400, detail="margen_min no puede ser mayor que margen_max")
+
+    # Auto-asignar numero_corto si no viene
+    numero = data.numero_corto
+    if numero is None:
+        max_actual = db.query(func.max(models.Usuario.numero_corto)).scalar() or 0
+        numero = max_actual + 1
+
     usuario = models.Usuario(
         nombre=data.nombre,
         email=data.email,
@@ -24,6 +32,8 @@ def crear(data: schemas.UsuarioCreate, db: Session = Depends(get_db), _=Depends(
         rol=data.rol,
         margen_min=data.margen_min,
         margen_max=data.margen_max,
+        empresa_id=data.empresa_id,
+        numero_corto=numero,
     )
     db.add(usuario)
     db.commit()

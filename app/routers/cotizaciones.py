@@ -23,10 +23,20 @@ def tipo_cambio(_=Depends(get_current_user)):
     return {"usd_mxn": round(rate, 4)}
 
 
-def _siguiente_numero(db: Session) -> str:
-    result = db.execute(text("SELECT nextval('cotizacion_seq')")).scalar()
-    año = datetime.now(timezone.utc).strftime("%Y")
-    return f"COT-{año}-{str(result).zfill(5)}"
+def _siguiente_numero(db: Session, empresa: "models.Empresa", vendedor: "models.Usuario") -> str:
+    """
+    Nuevo formato: AAMMDD-ACRÓNIMO-NUMVEND-CONSECUTIVO
+    El consecutivo es histórico por vendedor (incrementa cotizaciones_count del usuario).
+    """
+    nuevo_count = db.execute(text("""
+        UPDATE usuarios
+        SET cotizaciones_count = cotizaciones_count + 1
+        WHERE id = :uid
+        RETURNING cotizaciones_count
+    """), {"uid": str(vendedor.id)}).scalar()
+    fecha = datetime.now(timezone.utc).strftime("%y%m%d")
+    numvend = vendedor.numero_corto if vendedor.numero_corto is not None else 0
+    return f"{fecha}-{empresa.acronimo}-{numvend}-{str(nuevo_count).zfill(3)}"
 
 
 def _cot_options():
@@ -59,12 +69,14 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
     if not data.items:
         raise HTTPException(status_code=400, detail="La cotización debe tener al menos un ítem")
 
-    # Validar permisos por rol y empresa
+    # Validar permisos por empresa asignada (admin puede con cualquiera; vendedor solo su empresa)
     empresas_set = set(data.empresas)
-    if current_user.rol == "vendedor" and "servicios_lavanderia" in empresas_set:
-        raise HTTPException(status_code=403, detail="Los vendedores no pueden cotizar con Servicios de Lavandería")
-    if current_user.rol == "servicios" and empresas_set - {"servicios_lavanderia"}:
-        raise HTTPException(status_code=403, detail="El rol Servicios solo puede cotizar con Servicios de Lavandería")
+    if current_user.rol == "vendedor":
+        if current_user.empresa_id is None:
+            raise HTTPException(status_code=403, detail="El usuario no tiene una empresa asignada")
+        empresa_propia = db.query(models.Empresa).filter(models.Empresa.id == current_user.empresa_id).first()
+        if not empresa_propia or empresas_set != {empresa_propia.codigo}:
+            raise HTTPException(status_code=403, detail=f"Solo puedes cotizar con la empresa {empresa_propia.codigo if empresa_propia else ''}")
 
     cliente = db.query(models.Cliente).filter(models.Cliente.id == data.cliente_id).first()
     if not cliente:
@@ -80,8 +92,12 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
 
     # Crear una cotización por cada empresa seleccionada
     for empresa_code in data.empresas:
+        empresa = db.query(models.Empresa).filter(models.Empresa.codigo == empresa_code).first()
+        if not empresa:
+            raise HTTPException(status_code=400, detail=f"Empresa '{empresa_code}' no encontrada")
+
         cotizacion = models.Cotizacion(
-            numero_cotizacion=_siguiente_numero(db),
+            numero_cotizacion=_siguiente_numero(db, empresa, current_user),
             cliente_id=data.cliente_id,
             vendedor_id=current_user.id,
             notas=data.notas,
@@ -89,6 +105,7 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             moneda=data.moneda,
             tipo_cambio=round(tc, 4) if tc else None,
             empresa=empresa_code,
+            empresa_id=empresa.id,
         )
         db.add(cotizacion)
         db.flush()
@@ -102,6 +119,19 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             if not producto:
                 raise HTTPException(status_code=404, detail=f"Producto {item_data.producto_id} no encontrado")
 
+            # Precio específico para esta empresa
+            pe = db.query(models.ProductoEmpresa).filter(
+                models.ProductoEmpresa.producto_id == producto.id,
+                models.ProductoEmpresa.empresa_id == empresa.id,
+                models.ProductoEmpresa.activo == True,
+            ).first()
+            if not pe:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El producto {producto.modelo} no está disponible en la empresa {empresa.nombre}"
+                )
+            precio_lista_emp = float(pe.precio_lista)
+
             # Validar rango de ajuste
             if not (float(current_user.margen_min) <= item_data.porcentaje_ajuste <= float(current_user.margen_max)):
                 raise HTTPException(
@@ -110,14 +140,14 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                            f"[{current_user.margen_min}%, {current_user.margen_max}%]"
                 )
 
-            precio_final = float(producto.precio_lista) * (1 + item_data.porcentaje_ajuste / 100)
+            precio_final = precio_lista_emp * (1 + item_data.porcentaje_ajuste / 100)
             importe = precio_final * item_data.cantidad
 
             item = models.CotizacionItem(
                 cotizacion_id=cotizacion.id,
                 producto_id=item_data.producto_id,
                 cantidad=item_data.cantidad,
-                precio_lista=float(producto.precio_lista),
+                precio_lista=precio_lista_emp,
                 porcentaje_ajuste=item_data.porcentaje_ajuste,
                 precio_final=round(precio_final, 2),
                 importe=round(importe, 2),

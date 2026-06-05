@@ -11,7 +11,7 @@ from app.config import settings
 from app.limiter import limiter
 from app.database import engine, Base
 from app import models  # registra todos los modelos con Base
-from app.routers import auth, usuarios, clientes, productos, cotizaciones
+from app.routers import auth, usuarios, clientes, productos, cotizaciones, empresas
 
 app = FastAPI(title="Sistema de Cotizaciones", version="1.0.0")
 app.state.limiter = limiter
@@ -53,6 +53,76 @@ def on_startup():
         # Permitir nuevo rol 'servicios' en check constraint
         conn.execute(text("ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check"))
         conn.execute(text("ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'vendedor', 'servicios'))"))
+
+        # ── Fase 1: Tabla empresas + tabla puente producto_empresa ──
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS empresas (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                codigo VARCHAR(30) NOT NULL UNIQUE,
+                acronimo VARCHAR(10) NOT NULL UNIQUE,
+                nombre VARCHAR(200) NOT NULL,
+                nombre_corto VARCHAR(50),
+                direccion TEXT,
+                rfc VARCHAR(20),
+                telefono VARCHAR(30),
+                email VARCHAR(150),
+                logo_url TEXT,
+                logo_decoracion_url TEXT,
+                template_pdf VARCHAR(100),
+                activa BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS producto_empresa (
+                producto_id UUID NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+                empresa_id UUID NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                precio_lista NUMERIC(12,2) NOT NULL,
+                activo BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (producto_id, empresa_id)
+            )
+        """))
+
+        # Insertar las 4 empresas iniciales (idempotente)
+        _empresas_iniciales = [
+            ('clm',                 'CLM', 'CLM',                    'CLM',                    'images/clm.jpeg',                'images/clm_r.jpeg',     'cotizacion_clm.html'),
+            ('supliese_gamesail',   'GS',  'Gamesail',               'Gamesail',               'images/supliese_gamesail.jpeg',  'images/gamesail_r.jpeg','cotizacion_supliese_gamesail.html'),
+            ('supliese',            'SUP', 'Supliese',               'Supliese',               'images/supliese.jpeg',           'images/supliese_r.jpeg','cotizacion_supliese.html'),
+            ('servicios_lavanderia','SDL', 'Servicios de Lavandería','SDL',                    'images/supliese.jpeg',           None,                    'cotizacion_servicios_lavanderia.html'),
+        ]
+        for codigo, acronimo, nombre, nombre_corto, logo_url, logo_deco, tpl in _empresas_iniciales:
+            conn.execute(text("""
+                INSERT INTO empresas (codigo, acronimo, nombre, nombre_corto, direccion, rfc, telefono, email,
+                                      logo_url, logo_decoracion_url, template_pdf)
+                VALUES (:codigo, :acronimo, :nombre, :nombre_corto, :direccion, :rfc, :telefono, :email,
+                        :logo_url, :logo_deco, :tpl)
+                ON CONFLICT (codigo) DO NOTHING
+            """), {
+                "codigo": codigo, "acronimo": acronimo, "nombre": nombre, "nombre_corto": nombre_corto,
+                "direccion": settings.EMPRESA_DIRECCION,
+                "rfc": "SGO210826M44",
+                "telefono": settings.EMPRESA_TELEFONO,
+                "email": settings.EMPRESA_EMAIL,
+                "logo_url": logo_url, "logo_deco": logo_deco, "tpl": tpl,
+            })
+
+        # ── Fase 2: columnas multi-empresa en usuarios y cotizaciones ──
+        conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS empresa_id UUID REFERENCES empresas(id)"))
+        conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS numero_corto INT UNIQUE"))
+        conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cotizaciones_count INT NOT NULL DEFAULT 0"))
+        conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS empresa_id UUID REFERENCES empresas(id)"))
+
+        # Backfill productos → producto_empresa (solo productos que aún no tienen ninguna empresa)
+        conn.execute(text("""
+            INSERT INTO producto_empresa (producto_id, empresa_id, precio_lista, activo)
+            SELECT p.id, e.id, p.precio_lista, p.activo
+            FROM productos p
+            CROSS JOIN empresas e
+            WHERE e.codigo IN ('clm', 'supliese_gamesail', 'supliese')
+              AND NOT EXISTS (SELECT 1 FROM producto_empresa pe WHERE pe.producto_id = p.id)
+        """))
+
         conn.commit()
 
 _origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
@@ -79,6 +149,7 @@ api.include_router(usuarios.router)
 api.include_router(clientes.router)
 api.include_router(productos.router)
 api.include_router(cotizaciones.router)
+api.include_router(empresas.router)
 app.include_router(api)
 
 # ── Rutas de páginas HTML ────────────────────────────────────

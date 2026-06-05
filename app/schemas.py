@@ -16,6 +16,8 @@ class TokenResponse(BaseModel):
     nombre: str
     margen_min: float
     margen_max: float
+    empresa_id: Optional[UUID] = None
+    numero_corto: Optional[int] = None
 
 
 # ---------- Usuario ----------
@@ -23,18 +25,22 @@ class UsuarioCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
-    rol: str = Field("vendedor", pattern="^(admin|vendedor|servicios)$")
+    rol: str = Field("vendedor", pattern="^(admin|vendedor)$")
     margen_min: float = Field(-5.0, ge=-100, le=0)
     margen_max: float = Field(5.0, ge=0, le=100)
+    empresa_id: Optional[UUID] = None
+    numero_corto: Optional[int] = Field(None, ge=0, le=9999)
 
 class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=1, max_length=100)
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(None, min_length=6, max_length=100)
-    rol: Optional[str] = Field(None, pattern="^(admin|vendedor|servicios)$")
+    rol: Optional[str] = Field(None, pattern="^(admin|vendedor)$")
     margen_min: Optional[float] = Field(None, ge=-100, le=0)
     margen_max: Optional[float] = Field(None, ge=0, le=100)
     activo: Optional[bool] = None
+    empresa_id: Optional[UUID] = None
+    numero_corto: Optional[int] = Field(None, ge=0, le=9999)
 
 class UsuarioOut(BaseModel):
     id: UUID
@@ -44,6 +50,9 @@ class UsuarioOut(BaseModel):
     margen_min: float
     margen_max: float
     activo: bool
+    empresa_id: Optional[UUID] = None
+    numero_corto: Optional[int] = None
+    cotizaciones_count: Optional[int] = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -94,21 +103,46 @@ class ClienteOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---------- Empresa ----------
+class EmpresaOut(BaseModel):
+    id: UUID
+    codigo: str
+    acronimo: str
+    nombre: str
+    nombre_corto: Optional[str] = None
+    activa: bool
+
+    model_config = {"from_attributes": True}
+
+
 # ---------- Producto ----------
+class ProductoEmpresaInput(BaseModel):
+    empresa_id: UUID
+    precio_lista: float = Field(..., gt=0, lt=10_000_000)
+    activo: bool = True
+
+class ProductoEmpresaOut(BaseModel):
+    empresa_id: UUID
+    precio_lista: float
+    activo: bool
+
+    model_config = {"from_attributes": True}
+
+
 class ProductoCreate(BaseModel):
     marca: str = Field(..., min_length=1, max_length=100)
     equipo: str = Field(..., min_length=1, max_length=100)
     modelo: str = Field(..., min_length=1, max_length=100)
     descripcion: Optional[str] = Field(None, max_length=2000)
-    precio_lista: float = Field(..., gt=0, lt=10_000_000)
+    empresas: List[ProductoEmpresaInput] = Field(default_factory=list)
 
 class ProductoUpdate(BaseModel):
     marca: Optional[str] = Field(None, min_length=1, max_length=100)
     equipo: Optional[str] = Field(None, min_length=1, max_length=100)
     modelo: Optional[str] = Field(None, min_length=1, max_length=100)
     descripcion: Optional[str] = Field(None, max_length=2000)
-    precio_lista: Optional[float] = Field(None, gt=0, lt=10_000_000)
     activo: Optional[bool] = None
+    empresas: Optional[List[ProductoEmpresaInput]] = None
 
 class ProductoImagenOut(BaseModel):
     id: UUID
@@ -123,9 +157,10 @@ class ProductoOut(BaseModel):
     equipo: str
     modelo: str
     descripcion: Optional[str]
-    precio_lista: float
+    precio_lista: Optional[float] = None  # legacy/fallback
     imagen_url: Optional[str] = None
     imagenes: List[ProductoImagenOut] = []
+    empresas: List[ProductoEmpresaOut] = []
     activo: bool
 
     model_config = {"from_attributes": True}

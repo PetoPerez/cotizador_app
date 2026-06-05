@@ -38,10 +38,10 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url('images/clm.jpeg');
+    background-image: url('{{ empresa.logo_url or "images/clm.jpeg" }}');
     background-position: center center;
     background-repeat: no-repeat;
-    background-size: 500px auto;
+    background-size: 250px auto;
     opacity: 0.08;
     z-index: 0;
     pointer-events: none;
@@ -54,7 +54,7 @@ body {
 .content {
     position: relative;
     z-index: 1;
-    padding: 18mm 12mm 12mm 12mm;
+    padding: 9mm 12mm 12mm 12mm;
     background: transparent;
 }
 
@@ -67,7 +67,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
-    background: #c0392b;
+    background: #a71b1c;
     z-index: 10;
 }
 
@@ -82,16 +82,16 @@ body {
     align-items: flex-start;
     margin-bottom: 12px;
     padding-bottom: 10px;
-    border-bottom: 3px solid #c0392b;
+    border-bottom: 3px solid #a71b1c;
 }
 
 .logo-clm {
     width: auto;
-    height: 165px;
+    height: 99px;
 }
 
 .logo-clm img {
-    height: 165px;
+    height: 99px;
     width: auto;
     display: block;
 }
@@ -102,7 +102,7 @@ body {
 }
 
 .header-deco {
-    height: 110px;
+    height: 66px;
     width: auto;
     display: inline-block;
 }
@@ -126,6 +126,7 @@ body {
     font-size: 14px;
     font-weight: bold;
     margin-bottom: 3px;
+    color: #26326e;
 }
 
 .meta-right {
@@ -146,10 +147,11 @@ body {
     font-size: 12px;
     font-weight: bold;
     margin-bottom: 3px;
+    color: #26326e;
 }
 
 .greeting {
-    color: #c0392b;
+    color: #a71b1c;
     font-weight: bold;
     font-size: 11px;
     margin: 14px 0 5px;
@@ -174,7 +176,7 @@ body {
 }
 
 .products-table thead tr {
-    background: #c0392b;
+    background: #a71b1c;
     color: white;
 }
 
@@ -254,7 +256,7 @@ body {
 }
 
 .final-title {
-    color: #c0392b;
+    color: #a71b1c;
     font-size: 15px;
     font-weight: bold;
     margin-bottom: 8px;
@@ -273,8 +275,8 @@ body {
 .final-row.total {
     font-weight: bold;
     font-size: 16px;
-    color: #c0392b;
-    border-top: 2px solid #c0392b;
+    color: #a71b1c;
+    border-top: 2px solid #a71b1c;
     padding-top: 7px;
 }
 
@@ -293,7 +295,7 @@ body {
     right: 12mm;
     text-align: center;
     font-size: 9px;
-    border-top: 3px solid #c0392b;
+    border-top: 3px solid #a71b1c;
     padding-top: 6px;
 }
 
@@ -316,7 +318,7 @@ body {
 .legal h3 {
     margin: 12px 0 6px;
     font-size: 10px;
-    color: #c0392b;
+    color: #a71b1c;
     font-weight: bold;
     text-transform: uppercase;
 }
@@ -357,10 +359,10 @@ body {
 
 <div class="header-block">
     <div class="logo-clm">
-        <img src="images/clm.jpeg" alt="CLM">
+        <img src="{{ empresa.logo_url or 'images/clm.jpeg' }}" alt="CLM">
     </div>
     <div class="dots-area">
-        <img src="images/clm_r.jpeg" alt="" class="header-deco">
+        <img src="{{ empresa.logo_decoracion_url or 'images/clm_r.jpeg' }}" alt="" class="header-deco">
     </div>
 </div>
 
@@ -464,7 +466,7 @@ body {
 </div>
 
 <div class="bottom-company">
-    <div class="name">{{ empresa.nombre }}</div>
+    <div class="name">{{ cot.vendedor.nombre }}</div>
     <div>{{ empresa.direccion }} · Tel. {{ empresa.telefono }}</div>
 </div>
 
@@ -480,10 +482,10 @@ body {
 
 <div class="header-block">
     <div class="logo-clm">
-        <img src="images/clm.jpeg" alt="CLM">
+        <img src="{{ empresa.logo_url or 'images/clm.jpeg' }}" alt="CLM">
     </div>
     <div class="dots-area">
-        <img src="images/clm_r.jpeg" alt="" class="header-deco">
+        <img src="{{ empresa.logo_decoracion_url or 'images/clm_r.jpeg' }}" alt="" class="header-deco">
     </div>
 </div>
 
@@ -554,7 +556,7 @@ Para la interpretación y cumplimiento del presente contrato, <strong>LAS PARTES
 </div>
 
 <div class="bottom-company">
-    <div class="name">{{ empresa.nombre }}</div>
+    <div class="name">{{ cot.vendedor.nombre }}</div>
     <div>{{ empresa.direccion }} · Tel. {{ empresa.telefono }}</div>
 </div>
 

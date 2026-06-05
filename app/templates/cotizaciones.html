@@ -375,6 +375,7 @@ const isAdmin = user.rol === 'admin';
 let cotizaciones = [];
 let productos = [];
 let clientes = [];
+let empresas = [];
 let items = [];       // items del formulario nueva cotización
 let clienteId = null;
 let estadoEditId = null;
@@ -382,16 +383,49 @@ let monedaSeleccionada = 'MXN';
 let tipoCambioEditable = null;  // tipo de cambio que el usuario puede editar
 let empresasSeleccionadas = ['clm'];  // empresas para las que se generará la cotización
 
+// ─── Helpers de precio por empresa ─────────────────────────
+function precioParaEmpresa(producto, empresaCodigo) {
+  if (!producto || !producto.empresas) return null;
+  const emp = empresas.find(e => e.codigo === empresaCodigo);
+  if (!emp) return null;
+  const pe = producto.empresas.find(x => x.empresa_id === emp.id && x.activo);
+  return pe ? parseFloat(pe.precio_lista) : null;
+}
+
+function precioReferencia(producto) {
+  // Usa la primera empresa seleccionada como referencia
+  const cod = empresasSeleccionadas[0] || (user.empresa_id ? (empresas.find(e => e.id === user.empresa_id) || {}).codigo : null);
+  const p = precioParaEmpresa(producto, cod);
+  return p !== null ? p : null;
+}
+
+function aplicarPrecioEfectivo() {
+  productos.forEach(p => {
+    p.precio_lista = precioReferencia(p);
+  });
+}
+
+function productosDisponibles() {
+  // Productos activos en al menos una de las empresas seleccionadas
+  if (!empresasSeleccionadas.length) return productos;
+  const idsSel = empresas.filter(e => empresasSeleccionadas.includes(e.codigo)).map(e => e.id);
+  return productos.filter(p =>
+    (p.empresas || []).some(pe => idsSel.includes(pe.empresa_id) && pe.activo)
+  );
+}
+
 // ─── Inicialización ───────────────────────────────────────
 async function init() {
   try {
-    [cotizaciones, productos, clientes] = await Promise.all([
+    [cotizaciones, productos, clientes, empresas] = await Promise.all([
       apiFetch('/cotizaciones/'),
       apiFetch('/productos/'),
       apiFetch('/clientes/'),
+      apiFetch('/empresas/'),
     ]);
     await loadTipoCambio();
     configurarEmpresasPorRol();
+    aplicarPrecioEfectivo();
     renderStats();
     renderTabla(cotizaciones);
   } catch (e) {
@@ -515,24 +549,46 @@ function actualizarEmpresas() {
   if (document.getElementById('chk-supliese-gamesail').checked) empresasSeleccionadas.push('supliese_gamesail');
   if (document.getElementById('chk-supliese').checked) empresasSeleccionadas.push('supliese');
   if (document.getElementById('chk-servicios-lavanderia').checked) empresasSeleccionadas.push('servicios_lavanderia');
+  aplicarPrecioEfectivo();
+  renderItems();
+  calcularTotales();
 }
 
 function configurarEmpresasPorRol() {
-  const rol = user.rol;
-  const showServicios = rol === 'admin' || rol === 'servicios';
-  const showVentas    = rol === 'admin' || rol === 'vendedor';
+  if (user.rol === 'admin') {
+    // Admin ve todos los checkboxes
+    ['lbl-clm','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
+      .forEach(id => document.getElementById(id).style.display = 'flex');
+  } else {
+    // Vendedor: solo su empresa, preseleccionada
+    const empresa = empresas.find(e => e.id === user.empresa_id);
+    const codigoUsuario = empresa ? empresa.codigo : null;
 
-  document.getElementById('lbl-clm').style.display               = showVentas    ? 'flex' : 'none';
-  document.getElementById('lbl-supliese-gamesail').style.display = showVentas    ? 'flex' : 'none';
-  document.getElementById('lbl-supliese').style.display          = showVentas    ? 'flex' : 'none';
-  document.getElementById('lbl-servicios-lavanderia').style.display = showServicios ? 'flex' : 'none';
+    ['lbl-clm','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
+      .forEach(id => document.getElementById(id).style.display = 'none');
 
-  // Rol servicios: marcar por defecto su empresa y desmarcar las demás
-  if (rol === 'servicios') {
-    document.getElementById('chk-clm').checked = false;
-    document.getElementById('chk-supliese-gamesail').checked = false;
-    document.getElementById('chk-supliese').checked = false;
-    document.getElementById('chk-servicios-lavanderia').checked = true;
+    ['chk-clm','chk-supliese-gamesail','chk-supliese','chk-servicios-lavanderia']
+      .forEach(id => document.getElementById(id).checked = false);
+
+    const mapaChk = {
+      'clm': 'chk-clm',
+      'supliese_gamesail': 'chk-supliese-gamesail',
+      'supliese': 'chk-supliese',
+      'servicios_lavanderia': 'chk-servicios-lavanderia',
+    };
+    const mapaLbl = {
+      'clm': 'lbl-clm',
+      'supliese_gamesail': 'lbl-supliese-gamesail',
+      'supliese': 'lbl-supliese',
+      'servicios_lavanderia': 'lbl-servicios-lavanderia',
+    };
+    if (codigoUsuario && mapaChk[codigoUsuario]) {
+      const lbl = document.getElementById(mapaLbl[codigoUsuario]);
+      lbl.style.display = 'flex';
+      const chk = document.getElementById(mapaChk[codigoUsuario]);
+      chk.checked = true;
+      chk.disabled = true;
+    }
   }
   actualizarEmpresas();
 }
@@ -684,7 +740,8 @@ function buscarProductoItem(i, q) {
   const texto = q.trim().toLowerCase();
   if (!texto) { dd.style.display = 'none'; return; }
 
-  const matches = productos.filter(p =>
+  const disponibles = productosDisponibles();
+  const matches = disponibles.filter(p =>
     p.marca.toLowerCase().includes(texto) ||
     p.equipo.toLowerCase().includes(texto) ||
     p.modelo.toLowerCase().includes(texto) ||

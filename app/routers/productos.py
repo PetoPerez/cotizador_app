@@ -25,9 +25,15 @@ _COL_MAP = {
 
 
 @router.get("/", response_model=list[schemas.ProductoOut])
-def listar(q: str = None, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def listar(
+    q: str = None,
+    empresa: str = None,  # filtro opcional: código de empresa (clm, supliese_gamesail, etc.)
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
     query = (db.query(models.Producto)
-               .options(selectinload(models.Producto.imagenes))
+               .options(selectinload(models.Producto.imagenes),
+                        selectinload(models.Producto.empresas))
                .filter(models.Producto.activo == True))
     if q:
         query = query.filter(
@@ -35,6 +41,13 @@ def listar(q: str = None, db: Session = Depends(get_db), _=Depends(get_current_u
             models.Producto.marca.ilike(f"%{q}%") |
             models.Producto.equipo.ilike(f"%{q}%")
         )
+    if empresa:
+        empresa_obj = db.query(models.Empresa).filter(models.Empresa.codigo == empresa).first()
+        if empresa_obj:
+            query = (query.join(models.ProductoEmpresa,
+                                models.ProductoEmpresa.producto_id == models.Producto.id)
+                          .filter(models.ProductoEmpresa.empresa_id == empresa_obj.id,
+                                  models.ProductoEmpresa.activo == True))
     return query.order_by(models.Producto.marca, models.Producto.equipo).all()
 
 
@@ -73,9 +86,28 @@ def importar_excel(
                    f"Encabezados detectados: {', '.join(h for h in headers if h)}",
         )
 
+    # Empresas de ventas a las que se aplica el import
+    empresas_ventas = (db.query(models.Empresa)
+                         .filter(models.Empresa.codigo.in_(['clm', 'supliese_gamesail', 'supliese']))
+                         .all())
+
     insertados = 0
     actualizados = 0
     omitidos = 0
+
+    def upsert_precios(producto: models.Producto, precio: float):
+        """Upsert producto_empresa para las 3 empresas de ventas con el precio dado."""
+        existentes = {str(pe.empresa_id): pe for pe in producto.empresas}
+        for emp in empresas_ventas:
+            eid = str(emp.id)
+            if eid in existentes:
+                existentes[eid].precio_lista = precio
+                existentes[eid].activo = True
+            else:
+                db.add(models.ProductoEmpresa(
+                    producto_id=producto.id, empresa_id=emp.id,
+                    precio_lista=precio, activo=True,
+                ))
 
     for row in rows[1:]:
         def get(field):
@@ -109,15 +141,19 @@ def importar_excel(
         ).first()
 
         if existente:
-            existente.precio_lista = precio
-            existente.descripcion  = desc
-            existente.activo       = True
+            existente.descripcion = desc
+            existente.activo      = True
+            db.flush()
+            upsert_precios(existente, precio)
             actualizados += 1
         else:
-            db.add(models.Producto(
+            nuevo = models.Producto(
                 marca=marca, equipo=equipo, modelo=modelo,
-                descripcion=desc, precio_lista=precio,
-            ))
+                descripcion=desc,
+            )
+            db.add(nuevo)
+            db.flush()
+            upsert_precios(nuevo, precio)
             insertados += 1
 
     db.commit()
@@ -126,8 +162,23 @@ def importar_excel(
 
 @router.post("/", response_model=schemas.ProductoOut)
 def crear(data: schemas.ProductoCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
-    producto = models.Producto(**data.model_dump())
+    if not data.empresas:
+        raise HTTPException(status_code=400, detail="Debes asignar el producto a al menos una empresa")
+
+    producto = models.Producto(
+        marca=data.marca, equipo=data.equipo, modelo=data.modelo,
+        descripcion=data.descripcion,
+    )
     db.add(producto)
+    db.flush()  # asigna id
+
+    for pe in data.empresas:
+        db.add(models.ProductoEmpresa(
+            producto_id=producto.id,
+            empresa_id=pe.empresa_id,
+            precio_lista=pe.precio_lista,
+            activo=pe.activo,
+        ))
     db.commit()
     db.refresh(producto)
     return producto
@@ -138,8 +189,36 @@ def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_
     producto = db.query(models.Producto).filter(models.Producto.id == id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    for field, value in data.model_dump(exclude_none=True).items():
+
+    payload = data.model_dump(exclude_none=True)
+    empresas_input = payload.pop("empresas", None)
+
+    for field, value in payload.items():
         setattr(producto, field, value)
+
+    if empresas_input is not None:
+        # Reemplazar mapping producto_empresa con lo recibido
+        existentes = {str(pe.empresa_id): pe for pe in producto.empresas}
+        nuevos_ids = {str(pe["empresa_id"]) for pe in empresas_input}
+
+        # actualizar / insertar
+        for pe in empresas_input:
+            eid = str(pe["empresa_id"])
+            if eid in existentes:
+                existentes[eid].precio_lista = pe["precio_lista"]
+                existentes[eid].activo = pe["activo"]
+            else:
+                db.add(models.ProductoEmpresa(
+                    producto_id=producto.id,
+                    empresa_id=pe["empresa_id"],
+                    precio_lista=pe["precio_lista"],
+                    activo=pe["activo"],
+                ))
+        # eliminar los que ya no vienen
+        for eid, pe in existentes.items():
+            if eid not in nuevos_ids:
+                db.delete(pe)
+
     db.commit()
     db.refresh(producto)
     return producto
