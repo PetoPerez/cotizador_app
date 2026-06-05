@@ -34,6 +34,7 @@ def crear(data: schemas.UsuarioCreate, db: Session = Depends(get_db), _=Depends(
         margen_max=data.margen_max,
         empresa_id=data.empresa_id,
         numero_corto=numero,
+        telefono=data.telefono,
     )
     db.add(usuario)
     db.commit()

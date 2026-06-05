@@ -479,7 +479,7 @@ body {
     <tr>
         <td class="vigencia" colspan="2">VIGENCIA DE COTIZACIÓN 15 DIAS</td>
         <td colspan="2" style="font-size:8px;font-weight:bold">
-            {{ cot.vendedor.nombre }} &nbsp;&nbsp; {% if empresa.telefono %}CEL: {{ empresa.telefono }}{% endif %}
+            {{ cot.vendedor.nombre }} &nbsp;&nbsp; {% set tel = cot.vendedor.telefono or empresa.telefono %}{% if tel %}CEL: {{ tel }}{% endif %}
         </td>
     </tr>
 </table>

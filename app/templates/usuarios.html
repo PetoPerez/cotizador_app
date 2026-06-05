@@ -59,9 +59,15 @@
       <label class="form-label">Nombre</label>
       <input type="text" class="form-control" id="f-nombre" placeholder="Nombre completo">
     </div>
-    <div class="form-group">
-      <label class="form-label">Email</label>
-      <input type="email" class="form-control" id="f-email" placeholder="vendedor@empresa.com">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" id="f-email" placeholder="vendedor@empresa.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input type="text" class="form-control" id="f-telefono" placeholder="33 1234 5678">
+      </div>
     </div>
     <div class="form-group" id="pwd-group">
       <label class="form-label">Contraseña</label>
@@ -185,7 +191,7 @@ function openModal(id = null) {
   document.getElementById('modal-title').textContent = id ? 'Editar usuario' : 'Nuevo usuario';
   document.getElementById('pwd-group').style.display = id ? 'none' : 'block';
   if (!id) {
-    ['f-nombre','f-email','f-password','f-numero-corto'].forEach(f => document.getElementById(f).value = '');
+    ['f-nombre','f-email','f-telefono','f-password','f-numero-corto'].forEach(f => document.getElementById(f).value = '');
     document.getElementById('f-rol').value = 'vendedor';
     document.getElementById('f-empresa').value = '';
     document.getElementById('f-margen-min').value = -5;
@@ -205,6 +211,7 @@ function editar(id) {
   if (!u) return;
   document.getElementById('f-nombre').value = u.nombre;
   document.getElementById('f-email').value = u.email;
+  document.getElementById('f-telefono').value = u.telefono || '';
   document.getElementById('f-rol').value = u.rol;
   document.getElementById('f-empresa').value = u.empresa_id || '';
   document.getElementById('f-numero-corto').value = u.numero_corto ?? '';
@@ -235,6 +242,7 @@ async function guardar() {
   const body = {
     nombre: document.getElementById('f-nombre').value.trim(),
     email: document.getElementById('f-email').value.trim(),
+    telefono: document.getElementById('f-telefono').value.trim() || null,
     rol: rol,
     margen_min: margenMin,
     margen_max: margenMax,

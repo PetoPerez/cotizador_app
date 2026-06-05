@@ -27,6 +27,7 @@ class Usuario(Base):
     empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id"))
     numero_corto = Column(Integer, unique=True)
     cotizaciones_count = Column(Integer, nullable=False, default=0)
+    telefono = Column(String(30))
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cotizaciones = relationship("Cotizacion", back_populates="vendedor")

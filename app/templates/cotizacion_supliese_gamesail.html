@@ -412,7 +412,7 @@ body {
       <div class="firma">
         Asesor Comercial<br>
         <span class="cl-bold">{{ cot.vendedor.nombre }}</span><br>
-        {{ empresa.telefono }}
+        {{ cot.vendedor.telefono or empresa.telefono }}
       </div>
     </div>
   </div>

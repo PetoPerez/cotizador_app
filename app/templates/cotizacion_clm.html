@@ -549,7 +549,7 @@ Para la interpretación y cumplimiento del presente contrato, <strong>LAS PARTES
         <div class="advisor-box">
             Asesor Comercial<br>
             <strong>{{ cot.vendedor.nombre }}</strong><br>
-            {{ empresa.telefono }}
+            {{ cot.vendedor.telefono or empresa.telefono }}
         </div>
     </div>
 </div>

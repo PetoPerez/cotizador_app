@@ -111,6 +111,7 @@ def on_startup():
         conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS empresa_id UUID REFERENCES empresas(id)"))
         conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS numero_corto INT UNIQUE"))
         conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cotizaciones_count INT NOT NULL DEFAULT 0"))
+        conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono VARCHAR(30)"))
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS empresa_id UUID REFERENCES empresas(id)"))
 
         # Backfill productos → producto_empresa (solo productos que aún no tienen ninguna empresa)

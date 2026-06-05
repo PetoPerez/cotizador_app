@@ -30,6 +30,7 @@ class UsuarioCreate(BaseModel):
     margen_max: float = Field(5.0, ge=0, le=100)
     empresa_id: Optional[UUID] = None
     numero_corto: Optional[int] = Field(None, ge=0, le=9999)
+    telefono: Optional[str] = Field(None, max_length=30)
 
 class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=1, max_length=100)
@@ -41,6 +42,7 @@ class UsuarioUpdate(BaseModel):
     activo: Optional[bool] = None
     empresa_id: Optional[UUID] = None
     numero_corto: Optional[int] = Field(None, ge=0, le=9999)
+    telefono: Optional[str] = Field(None, max_length=30)
 
 class UsuarioOut(BaseModel):
     id: UUID
@@ -53,6 +55,7 @@ class UsuarioOut(BaseModel):
     empresa_id: Optional[UUID] = None
     numero_corto: Optional[int] = None
     cotizaciones_count: Optional[int] = 0
+    telefono: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
