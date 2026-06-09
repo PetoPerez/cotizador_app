@@ -110,6 +110,7 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             alcance_servicio=data.alcance_servicio,
             tiempo_entrega=data.tiempo_entrega,
             forma_pago=data.forma_pago,
+            ciudad_entrega=data.ciudad_entrega,
         )
         db.add(cotizacion)
         db.flush()

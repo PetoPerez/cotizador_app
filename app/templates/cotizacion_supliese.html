@@ -309,6 +309,12 @@ body {
     mayor información de los mismos.
   </div>
 
+  {% if cot.ciudad_entrega %}
+  <div style="font-size:10px;margin-bottom:10px">
+    <strong style="color:#05c66e">Ciudad de entrega:</strong> {{ cot.ciudad_entrega }}
+  </div>
+  {% endif %}
+
   <!-- ── PRODUCTOS ── -->
   {% for item in cot.items %}
   <div class="prod-section">

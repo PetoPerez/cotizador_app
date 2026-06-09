@@ -163,6 +163,14 @@
           </div>
 
           <div class="card">
+            <div style="font-size:15px;font-weight:600;margin-bottom:14px">Entrega</div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Ciudad de entrega</label>
+              <input type="text" class="form-control" id="f-ciudad-entrega" placeholder="Ej: Guadalajara, Jalisco">
+            </div>
+          </div>
+
+          <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
               <div id="items-titulo" style="font-size:15px;font-weight:600">Productos</div>
               <button id="items-add-btn" class="btn btn-secondary btn-sm" onclick="agregarItem()">+ Agregar producto</button>
@@ -644,6 +652,7 @@ function resetNueva() {
   document.getElementById('buscar-cliente').value = '';
   document.getElementById('cliente-seleccionado').style.display = 'none';
   document.getElementById('f-notas').value = '';
+  document.getElementById('f-ciudad-entrega').value = '';
   cargarTipoCambioAPI();
   setMoneda('MXN');
   renderItems();
@@ -979,6 +988,7 @@ async function generarCotizacion() {
       moneda: monedaSeleccionada,
       tipo_cambio: tipoCambioEditable,
       empresas: empresasSeleccionadas,
+      ciudad_entrega: document.getElementById('f-ciudad-entrega').value.trim() || null,
       items: itemsValidos.map(i => ({
         producto_id: i.productoId || null,
         servicio_id: i.servicioId || null,

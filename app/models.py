@@ -152,6 +152,7 @@ class Cotizacion(Base):
     alcance_servicio = Column(Text)
     tiempo_entrega = Column(String(50))
     forma_pago = Column(String(150))
+    ciudad_entrega = Column(String(150))
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cliente = relationship("Cliente", back_populates="cotizaciones")

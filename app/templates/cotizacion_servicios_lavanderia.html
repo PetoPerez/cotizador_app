@@ -495,6 +495,12 @@ body {
     </div>
 </div>
 
+{% if cot.ciudad_entrega %}
+<div style="margin:8px 0 6px;padding:6px 12px;background:#f3f4f6;border-left:3px solid #1e2e54;font-size:9px">
+    <strong style="color:#1e2e54">CIUDAD DE ENTREGA:</strong> {{ cot.ciudad_entrega }}
+</div>
+{% endif %}
+
 <!-- ═══ TABLA DE PRODUCTOS / SERVICIOS ═══ -->
 <table class="products">
     <thead>

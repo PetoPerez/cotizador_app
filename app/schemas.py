@@ -237,6 +237,7 @@ class CotizacionCreate(BaseModel):
     alcance_servicio: Optional[str] = None
     tiempo_entrega: Optional[str] = Field(None, max_length=50)
     forma_pago: Optional[str] = Field(None, max_length=150)
+    ciudad_entrega: Optional[str] = Field(None, max_length=150)
 
 class CotizacionOut(BaseModel):
     id: UUID
@@ -257,6 +258,7 @@ class CotizacionOut(BaseModel):
     alcance_servicio: Optional[str] = None
     tiempo_entrega: Optional[str] = None
     forma_pago: Optional[str] = None
+    ciudad_entrega: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

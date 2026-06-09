@@ -394,6 +394,12 @@ body {
     </div>
 </div>
 
+{% if cot.ciudad_entrega %}
+<div style="margin-top:10px;font-size:10px">
+    <strong style="color:#a71b1c">Ciudad de entrega:</strong> {{ cot.ciudad_entrega }}
+</div>
+{% endif %}
+
 {% for item in cot.items %}
 <table class="products-table">
     <thead>

@@ -52,6 +52,7 @@ def on_startup():
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS alcance_servicio TEXT"))
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS tiempo_entrega VARCHAR(50)"))
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS forma_pago VARCHAR(150)"))
+        conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS ciudad_entrega VARCHAR(150)"))
         # Quitar NOT NULL de productos.precio_lista (ahora vive en producto_empresa)
         conn.execute(text("ALTER TABLE productos ALTER COLUMN precio_lista DROP NOT NULL"))
         # Tabla servicios (catálogo específico de Servicios de Lavandería)
