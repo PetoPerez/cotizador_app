@@ -49,6 +49,10 @@ class Cliente(Base):
     rfc = Column(String(20))
     domicilio_empresa = Column(Text)
     domicilio_entrega = Column(Text)
+    dias_contacto = Column(String(100))
+    horario_contacto = Column(String(50))
+    relacion = Column(String(100))
+    cargo_ocupa = Column(String(100))
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cotizaciones = relationship("Cotizacion", back_populates="cliente")
@@ -70,6 +74,17 @@ class Empresa(Base):
     logo_decoracion_url = Column(Text)
     template_pdf = Column(String(100))
     activa = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+
+
+class Servicio(Base):
+    __tablename__ = "servicios"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nombre = Column(String(200), nullable=False)
+    descripcion = Column(Text)
+    precio_unitario = Column(Numeric(12, 2), nullable=False)
+    activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
 
@@ -134,6 +149,9 @@ class Cotizacion(Base):
     tipo_cambio = Column(Numeric(10, 4), nullable=True)
     empresa = Column(String(30), nullable=False, default='clm')  # legacy: clm, supliese_gamesail, supliese, supliese_gomez
     empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id"))
+    alcance_servicio = Column(Text)
+    tiempo_entrega = Column(String(50))
+    forma_pago = Column(String(150))
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cliente = relationship("Cliente", back_populates="cotizaciones")
@@ -147,7 +165,9 @@ class CotizacionItem(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     cotizacion_id = Column(UUID(as_uuid=True), ForeignKey("cotizaciones.id", ondelete="CASCADE"), nullable=False)
-    producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id"), nullable=False)
+    producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id"), nullable=True)
+    servicio_id = Column(UUID(as_uuid=True), ForeignKey("servicios.id"), nullable=True)
+    descripcion_libre = Column(Text)
     cantidad = Column(Integer, nullable=False)
     precio_lista = Column(Numeric(12, 2), nullable=False)
     porcentaje_ajuste = Column(Numeric(5, 2), nullable=False, default=0)
@@ -157,3 +177,4 @@ class CotizacionItem(Base):
 
     cotizacion = relationship("Cotizacion", back_populates="items")
     producto = relationship("Producto")
+    servicio = relationship("Servicio")

@@ -17,6 +17,7 @@ class TokenResponse(BaseModel):
     margen_min: float
     margen_max: float
     empresa_id: Optional[UUID] = None
+    empresa_codigo: Optional[str] = None
     numero_corto: Optional[int] = None
 
 
@@ -74,6 +75,10 @@ class ClienteCreate(BaseModel):
     rfc: Optional[str] = Field(None, max_length=20)
     domicilio_empresa: Optional[str] = None
     domicilio_entrega: Optional[str] = None
+    dias_contacto: Optional[str] = Field(None, max_length=100)
+    horario_contacto: Optional[str] = Field(None, max_length=50)
+    relacion: Optional[str] = Field(None, max_length=100)
+    cargo_ocupa: Optional[str] = Field(None, max_length=100)
 
 class ClienteUpdate(BaseModel):
     nombre_razon_social: Optional[str] = Field(None, min_length=1, max_length=200)
@@ -87,6 +92,10 @@ class ClienteUpdate(BaseModel):
     rfc: Optional[str] = Field(None, max_length=20)
     domicilio_empresa: Optional[str] = None
     domicilio_entrega: Optional[str] = None
+    dias_contacto: Optional[str] = Field(None, max_length=100)
+    horario_contacto: Optional[str] = Field(None, max_length=50)
+    relacion: Optional[str] = Field(None, max_length=100)
+    cargo_ocupa: Optional[str] = Field(None, max_length=100)
 
 class ClienteOut(BaseModel):
     id: UUID
@@ -101,6 +110,10 @@ class ClienteOut(BaseModel):
     rfc: Optional[str] = None
     domicilio_empresa: Optional[str] = None
     domicilio_entrega: Optional[str] = None
+    dias_contacto: Optional[str] = None
+    horario_contacto: Optional[str] = None
+    relacion: Optional[str] = None
+    cargo_ocupa: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -169,21 +182,48 @@ class ProductoOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---------- Servicio ----------
+class ServicioCreate(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=200)
+    descripcion: Optional[str] = Field(None, max_length=2000)
+    precio_unitario: float = Field(..., gt=0, lt=10_000_000)
+
+class ServicioUpdate(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=1, max_length=200)
+    descripcion: Optional[str] = Field(None, max_length=2000)
+    precio_unitario: Optional[float] = Field(None, gt=0, lt=10_000_000)
+    activo: Optional[bool] = None
+
+class ServicioOut(BaseModel):
+    id: UUID
+    nombre: str
+    descripcion: Optional[str]
+    precio_unitario: float
+    activo: bool
+
+    model_config = {"from_attributes": True}
+
+
 # ---------- Cotización ----------
 class CotizacionItemCreate(BaseModel):
-    producto_id: UUID
+    producto_id: Optional[UUID] = None
+    servicio_id: Optional[UUID] = None
+    descripcion_libre: Optional[str] = None
     cantidad: int
     porcentaje_ajuste: float = 0.0
 
 class CotizacionItemOut(BaseModel):
     id: UUID
-    producto_id: UUID
+    producto_id: Optional[UUID] = None
+    servicio_id: Optional[UUID] = None
+    descripcion_libre: Optional[str] = None
     cantidad: int
     precio_lista: float
     porcentaje_ajuste: float
     precio_final: float
     importe: float
-    producto: ProductoOut
+    producto: Optional[ProductoOut] = None
+    servicio: Optional[ServicioOut] = None
 
     model_config = {"from_attributes": True}
 
@@ -194,6 +234,9 @@ class CotizacionCreate(BaseModel):
     moneda: str = Field('MXN', pattern='^(MXN|USD)$')
     tipo_cambio: Optional[float] = None
     empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'servicios_lavanderia']] = Field(default=['clm'])
+    alcance_servicio: Optional[str] = None
+    tiempo_entrega: Optional[str] = Field(None, max_length=50)
+    forma_pago: Optional[str] = Field(None, max_length=150)
 
 class CotizacionOut(BaseModel):
     id: UUID
@@ -211,6 +254,9 @@ class CotizacionOut(BaseModel):
     fecha: datetime
     vigencia: Optional[datetime]
     items: List[CotizacionItemOut]
+    alcance_servicio: Optional[str] = None
+    tiempo_entrega: Optional[str] = None
+    forma_pago: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

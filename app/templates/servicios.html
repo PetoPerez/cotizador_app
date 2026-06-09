@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Servicios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="layout">
+  <div id="sidebar-root"></div>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Servicios</div>
+        <div class="page-subtitle">Catálogo de servicios de mantenimiento y reparación</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">+ Nuevo servicio</button>
+    </div>
+
+    <div id="alert-box" class="alert hidden"></div>
+
+    <div class="card">
+      <div class="search-bar">
+        <input type="text" class="form-control" id="search" placeholder="Buscar por nombre..." oninput="filtrar()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Precio unitario</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body">
+            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Nuevo servicio</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-alert" class="alert hidden"></div>
+
+    <div class="form-group">
+      <label class="form-label">Nombre del servicio *</label>
+      <input type="text" class="form-control" id="f-nombre" placeholder="Mantenimiento preventivo lavadora 25kg">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <textarea class="form-control" id="f-descripcion" rows="4" placeholder="Detalle del servicio: revisión, limpieza, ajustes, etc."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Precio unitario (MXN) *</label>
+      <input type="number" class="form-control" id="f-precio" placeholder="0.00" step="0.01" min="0">
+    </div>
+
+    <div class="flex gap-8 mt-16" style="justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="api.js?v=3"></script>
+<script>
+requireAuth();
+
+const user = getUser();
+const puedeGestionar = user.rol === 'admin' || user.empresa_codigo === 'servicios_lavanderia';
+if (!puedeGestionar) {
+  window.location.href = '/cotizaciones';
+}
+
+document.getElementById('sidebar-root').innerHTML = renderSidebar('servicios');
+
+let servicios = [];
+let editId = null;
+
+async function cargar() {
+  try {
+    servicios = await apiFetch('/servicios/');
+    renderTabla(servicios);
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+function filtrar() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const filtrados = servicios.filter(s =>
+    s.nombre.toLowerCase().includes(q) ||
+    (s.descripcion || '').toLowerCase().includes(q)
+  );
+  renderTabla(filtrados);
+}
+
+function renderTabla(data) {
+  const tbody = document.getElementById('tabla-body');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Sin servicios registrados</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(s => `
+    <tr>
+      <td><strong style="color:var(--text)">${s.nombre}</strong></td>
+      <td style="max-width:380px;color:var(--text2);font-size:13px">${s.descripcion || '—'}</td>
+      <td><strong style="color:var(--accent2);font-family:'DM Mono',monospace">${formatMXN(s.precio_unitario)}</strong></td>
+      <td>${s.activo
+        ? '<span class="badge badge-green">Activo</span>'
+        : '<span class="badge badge-red">Inactivo</span>'}</td>
+      <td>
+        <div class="flex gap-8">
+          <button class="btn btn-secondary btn-sm" onclick="editar('${s.id}')">Editar</button>
+          ${s.activo ? `<button class="btn btn-danger btn-sm" onclick="desactivar('${s.id}')">Desactivar</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openModal(id = null) {
+  editId = id;
+  document.getElementById('modal-title').textContent = id ? 'Editar servicio' : 'Nuevo servicio';
+  if (!id) {
+    ['f-nombre','f-descripcion','f-precio'].forEach(f => document.getElementById(f).value = '');
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editId = null;
+}
+
+function editar(id) {
+  const s = servicios.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('f-nombre').value = s.nombre;
+  document.getElementById('f-descripcion').value = s.descripcion || '';
+  document.getElementById('f-precio').value = s.precio_unitario;
+  openModal(id);
+}
+
+async function guardar() {
+  const body = {
+    nombre: document.getElementById('f-nombre').value.trim(),
+    descripcion: document.getElementById('f-descripcion').value.trim() || null,
+    precio_unitario: parseFloat(document.getElementById('f-precio').value),
+  };
+
+  if (!body.nombre) {
+    showAlert('El nombre es requerido', 'danger', 'modal-alert');
+    return;
+  }
+  if (isNaN(body.precio_unitario) || body.precio_unitario <= 0) {
+    showAlert('Captura un precio válido', 'danger', 'modal-alert');
+    return;
+  }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  try {
+    if (editId) {
+      await apiFetch(`/servicios/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      await apiFetch('/servicios/', { method: 'POST', body: JSON.stringify(body) });
+    }
+    closeModal();
+    await cargar();
+    showAlert('Servicio guardado correctamente', 'success');
+  } catch (e) {
+    showAlert(e.message, 'danger', 'modal-alert');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function desactivar(id) {
+  if (!confirm('¿Desactivar este servicio?')) return;
+  try {
+    await apiFetch(`/servicios/${id}`, { method: 'DELETE' });
+    await cargar();
+    showAlert('Servicio desactivado', 'success');
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+cargar();
+loadTipoCambio();
+</script>
+</body>
+</html>

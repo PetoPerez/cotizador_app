@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <title>Cotización Servicios de Lavandería</title>
 <style>
-
 @page {
     size: A4;
     margin: 0;
@@ -12,15 +11,16 @@
 
 * {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body {
-    margin: 0;
-    padding: 0;
     font-family: Arial, Helvetica, sans-serif;
     background: #fff;
-    color: #222;
+    color: #1f2937;
     font-size: 9px;
+    line-height: 1.35;
 }
 
 .page {
@@ -30,234 +30,381 @@ body {
     margin: 0 auto;
     background: #fff;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-.page::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
+/* El contenido principal crece y empuja el footer al fondo */
+.spacer {
+    flex: 1 1 auto;
+}
+
+/* ─── HEADER azul oscuro ────────────────────────────── */
+.top-bar {
+    background: #1e2e54;
+    color: #fff;
+    padding: 12px 22px;
+    display: table;
     width: 100%;
-    height: 100%;
-    background-image: url('images/supliese.jpeg');
-    background-position: center 55%;
-    background-repeat: no-repeat;
-    background-size: 520px auto;
-    opacity: 0.10;
-    z-index: 0;
-    pointer-events: none;
+    table-layout: fixed;
 }
-
-.content {
-    position: relative;
-    z-index: 1;
-    padding: 10mm 8mm;
-}
-
-/* ══════════════════════════════════════
-   HEADER: 6 LOGOS
-   ══════════════════════════════════════ */
-.brands-table {
-    width: 100%;
-    border-collapse: collapse;
-    border: 2px solid #1a1a1a;
-    margin-bottom: 0;
-    background: transparent;
-}
-.brands-table td {
-    text-align: center;
+.top-cell {
+    display: table-cell;
     vertical-align: middle;
-    padding: 6px 4px;
-    width: 16.66%;
-    background: transparent;
 }
-.brands-table img {
-    max-height: 38px;
-    max-width: 95%;
-    object-fit: contain;
+.top-left { width: 32%; }
+.top-center { width: 44%; text-align: center; }
+.top-right { width: 24%; text-align: right; }
+
+.brand-logo {
+    height: 38px;
+    width: auto;
     display: inline-block;
-}
-
-/* ══════════════════════════════════════
-   CABECERA: EMPRESA + FECHA + No. PEDIDO
-   ══════════════════════════════════════ */
-.head-table {
-    width: 100%;
-    border-collapse: collapse;
-    border: 2px solid #1a1a1a;
-    border-top: none;
-    background: transparent;
-}
-.head-table td {
-    border: 1px solid #1a1a1a;
-    padding: 4px 8px;
-    background: transparent;
-}
-.head-empresa {
-    text-align: center;
-    font-weight: bold;
-    font-size: 12px;
-    width: 60%;
-}
-.head-label {
-    background: #d9e8f5 !important;
-    text-align: center;
-    font-weight: bold;
-    font-size: 8px;
-    width: 12%;
-}
-.head-value {
-    text-align: center;
-    font-weight: bold;
-    font-size: 10px;
-    width: 14%;
-}
-
-/* ══════════════════════════════════════
-   SECCIONES (CONTACTO / ENTREGA / FACTURACIÓN)
-   ══════════════════════════════════════ */
-.section-title {
-    background: #d9e8f5 !important;
-    border: 1px solid #1a1a1a;
-    border-top: none;
-    text-align: center;
-    font-weight: bold;
-    font-size: 9.5px;
-    padding: 3px;
-    letter-spacing: 0.3px;
-}
-
-.section-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: transparent;
-}
-.section-table td {
-    border: 1px solid #1a1a1a;
-    padding: 3px 6px;
-    background: transparent;
-    font-size: 8.5px;
     vertical-align: middle;
-    height: 18px;
 }
-.section-table .lbl {
-    font-weight: bold;
-    width: 16%;
-    background: transparent !important;
-}
-.section-table .val {
-    width: 17%;
-}
-.section-table .lbl-narrow {
-    font-weight: bold;
-    width: 11%;
-}
-
-/* ══════════════════════════════════════
-   TABLA DE PRODUCTOS
-   ══════════════════════════════════════ */
-.products-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 2px;
-    background: transparent;
-}
-.products-table th {
-    background: #d9e8f5;
-    border: 1px solid #1a1a1a;
-    padding: 4px 3px;
-    font-size: 9px;
-    font-weight: bold;
-    text-align: center;
-}
-.products-table th.descripcion-th {
-    font-style: italic;
-}
-.products-table td {
-    border: 1px solid #1a1a1a;
-    padding: 3px 4px;
+.brand-tag {
     font-size: 8px;
-    vertical-align: top;
-    background: transparent;
-    height: 22px;
+    color: #cfe4ee;
+    margin-top: 2px;
+    letter-spacing: 0.4px;
 }
-.col-cant   { width: 7%; text-align: center; }
-.col-equipo { width: 16%; }
-.col-parte  { width: 13%; text-align: center; }
-.col-desc   { width: 38%; }
-.col-precio { width: 13%; text-align: right; }
-.col-imp    { width: 13%; text-align: right; }
-
-.subtotal-row td {
-    font-weight: bold;
-    background: #f5f5f5 !important;
-    text-align: right;
+.top-title {
+    font-size: 19px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+.top-subtitle {
+    font-size: 9px;
+    color: #cfe4ee;
+    margin-top: 3px;
+    letter-spacing: 0.6px;
+}
+.top-subtitle2 {
+    font-size: 9.5px;
+    color: #fff;
+    margin-top: 1px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+.pedido-box {
+    display: inline-block;
+    background: #fff;
+    color: #1e2e54;
+    border-radius: 6px;
+    padding: 6px 14px;
+    text-align: center;
+    min-width: 100px;
+}
+.pedido-label {
+    font-size: 8px;
+    font-weight: 600;
+    color: #1e2e54;
+}
+.pedido-value {
+    font-size: 13px;
+    font-weight: 900;
+    margin-top: 1px;
 }
 
-/* ══════════════════════════════════════
-   OBSERVACIONES + TOTALES
-   ══════════════════════════════════════ */
-.bottom-table {
+/* ─── BARRA DE CONTACTO ─────────────────────────────── */
+.contact-bar {
+    background: #f3f4f6;
+    padding: 7px 22px;
+    font-size: 8.5px;
+    color: #4b5563;
+    display: table;
+    width: 100%;
+}
+.contact-bar span {
+    display: inline-block;
+    margin-right: 22px;
+    vertical-align: middle;
+}
+.contact-bar .ico {
+    color: #1e2e54;
+    font-weight: 700;
+    margin-right: 4px;
+}
+
+/* ─── CONTENIDO PRINCIPAL ───────────────────────────── */
+.content {
+    padding: 12px 22px;
+}
+.content-bottom {
+    padding-top: 0;
+    padding-bottom: 6px;
+}
+
+/* Secciones tipo card */
+.card {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin-bottom: 9px;
+    overflow: hidden;
+}
+.card-head {
+    background: #1e2e54;
+    color: #fff;
+    padding: 5px 12px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+}
+.card-head .ico {
+    margin-right: 5px;
+}
+.card-body {
+    padding: 8px 12px;
+}
+.card-body table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 6px;
-    background: transparent;
 }
-.bottom-table td {
-    border: 1px solid #1a1a1a;
-    padding: 4px 6px;
-    background: transparent;
+.card-body td {
+    padding: 3px 4px;
+    vertical-align: top;
     font-size: 8.5px;
+}
+.card-body .lbl {
+    font-weight: 700;
+    color: #4b5563;
+    width: 18%;
+}
+.card-body .val {
+    color: #111827;
+}
+
+/* ─── TABLA DE PRODUCTOS / SERVICIOS ────────────────── */
+.products {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+    font-size: 8.5px;
+}
+.products thead th {
+    background: #e5e7eb;
+    color: #1f2937;
+    padding: 6px 5px;
+    font-size: 8.5px;
+    font-weight: 700;
+    text-align: center;
+    border: 1px solid #d1d5db;
+}
+.products tbody td {
+    padding: 5px 5px;
+    border: 1px solid #d1d5db;
+    vertical-align: middle;
+}
+.col-num   { width: 4%;  text-align: center; font-weight: 700; }
+.col-marca { width: 11%; font-weight: 700; }
+.col-mod   { width: 14%; }
+.col-desc  { width: 33%; }
+.col-cant  { width: 6%;  text-align: center; }
+.col-uni   { width: 14%; text-align: right; }
+.col-imp   { width: 18%; text-align: right; font-weight: 700; }
+
+/* ─── BLOQUE TRIPLE: ALCANCE + CONDICIONES + TOTALES ── */
+.triple {
+    margin-top: 10px;
+    display: table;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 6px 0;
+    table-layout: fixed;
+}
+.triple-col {
+    display: table-cell;
     vertical-align: top;
 }
-.obs-cell {
-    width: 60%;
-    height: 90px;
+.col-alcance  { width: 38%; }
+.col-condic   { width: 28%; }
+.col-totales  { width: 34%; }
+
+.box-titulo {
+    font-size: 9px;
+    font-weight: 800;
+    color: #1e2e54;
+    margin-bottom: 5px;
+    letter-spacing: 0.4px;
 }
-.obs-label {
-    background: #d9e8f5 !important;
-    font-weight: bold;
-    text-align: left;
+.box-titulo .ico {
+    color: #7fc9a6;
+    margin-right: 4px;
 }
-.totals-lbl {
-    width: 20%;
-    background: #d9e8f5 !important;
-    font-weight: bold;
+
+.alcance-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.alcance-list li {
+    font-size: 8.3px;
+    padding: 2px 0 2px 14px;
+    position: relative;
+}
+.alcance-list li::before {
+    content: '✓';
+    color: #7fc9a6;
+    font-weight: 700;
+    position: absolute;
+    left: 0;
+    top: 1px;
+}
+
+.condic-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.condic-table td {
+    padding: 2px 4px;
+    font-size: 8.3px;
+    vertical-align: top;
+}
+.condic-table .lbl {
+    color: #4b5563;
+    font-weight: 600;
+    width: 45%;
+}
+
+/* Totales: caja azul oscura */
+.totales-box {
+    background: #1e2e54;
+    color: #fff;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+.totales-box table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.totales-box td {
+    padding: 3px 0;
+    font-size: 9px;
+    color: #fff;
+}
+.totales-box td.lbl {
+    font-weight: 600;
+    color: #cfe4ee;
+}
+.totales-box td.val {
     text-align: right;
-}
-.totals-val {
-    width: 20%;
-    text-align: right;
+    font-weight: 700;
     font-family: 'DM Mono', monospace;
 }
-.totals-val.grand {
-    font-weight: bold;
-    font-size: 11px;
+.totales-box .total-row td {
+    font-size: 11.5px;
+    font-weight: 800;
+    border-top: 1px solid #4b5e8a;
+    padding-top: 5px;
+    margin-top: 4px;
 }
 
-/* ══════════════════════════════════════
-   FOOTER FINAL
-   ══════════════════════════════════════ */
-.footer-info {
-    margin-top: 8px;
-    border: 1px solid #1a1a1a;
-    background: transparent;
-    width: 100%;
-    border-collapse: collapse;
-}
-.footer-info td {
-    border: 1px solid #1a1a1a;
-    padding: 4px 6px;
-    background: transparent;
-    font-size: 8px;
+/* Caja TOTAL DE INVERSIÓN (azul claro) */
+.inversion-box {
+    background: #7fc9a6;
+    color: #fff;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 7px;
     text-align: center;
 }
-.footer-info .titulo-tec {
-    font-weight: bold;
-    background: #d9e8f5 !important;
+.inversion-label {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
 }
-.footer-info .vigencia {
-    font-weight: bold;
+.inversion-value {
+    font-size: 16px;
+    font-weight: 900;
+    margin-top: 1px;
+    font-family: Arial, sans-serif;
+}
+.inversion-letras {
+    font-size: 7.5px;
+    margin-top: 3px;
+    letter-spacing: 0.4px;
+    line-height: 1.3;
+}
+
+/* ─── OBSERVACIONES + RFC ────────────────────────────── */
+.obs-row {
+    margin-top: 9px;
+    display: table;
+    width: 100%;
+}
+.obs-cell {
+    display: table-cell;
+    vertical-align: top;
+    width: 65%;
+    font-size: 7.5px;
+    color: #6b7280;
+    line-height: 1.4;
+    padding-right: 12px;
+}
+.obs-cell strong { color: #1f2937; }
+.rfc-cell {
+    display: table-cell;
+    vertical-align: top;
+    width: 35%;
+    text-align: right;
+    font-size: 8px;
+    color: #1f2937;
+}
+.rfc-cell strong { display: block; font-weight: 800; margin-bottom: 1px; }
+
+/* ─── FOOTER: marcas + leyenda ───────────────────────── */
+.brands-strip {
+    margin-top: 12px;
+    background: #fff;
+    padding: 8px 22px 4px;
+    text-align: center;
+    border-top: 1px solid #e5e7eb;
+}
+.brands-label {
+    display: block;
+    font-size: 8.5px;
+    color: #4b5563;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: 0.4px;
+}
+.brands-strip img {
+    display: inline-block;
+    height: 24px;
+    width: auto;
+    object-fit: contain;
+    margin: 0 9px;
+    vertical-align: middle;
+}
+
+.footer-bar {
+    background: #1e2e54;
+    color: #fff;
+    padding: 8px 22px;
+    margin-top: 6px;
+    font-size: 8px;
+    text-align: center;
+    line-height: 1.4;
+}
+.footer-bar .izq, .footer-bar .der {
+    display: inline-block;
+    vertical-align: middle;
+}
+.footer-bar .izq {
+    text-align: left;
+    border-right: 1px solid #4b5e8a;
+    padding-right: 16px;
+    margin-right: 16px;
+}
+.footer-bar strong { color: #fff; font-weight: 700; }
+.footer-bar small { color: #cfe4ee; font-size: 7.5px; }
+
+.foot-direccion {
+    background: #f3f4f6;
+    text-align: center;
+    font-size: 8px;
+    color: #4b5563;
+    padding: 5px 22px;
 }
 
 </style>
@@ -266,224 +413,259 @@ body {
 
 <section class="page">
 
+<!-- ═══ TOP BAR ═══ -->
+<div class="top-bar">
+    <div class="top-cell top-left">
+        <img class="brand-logo" src="{{ empresa.logo_url or 'images/supliese.jpeg' }}" alt="Supliese">
+        <div class="brand-tag">Servicio para lavanderías</div>
+    </div>
+    <div class="top-cell top-center">
+        <div class="top-title">COTIZACIÓN</div>
+        <div class="top-subtitle">SERVICIO DE MANTENIMIENTO PREVENTIVO</div>
+        <div class="top-subtitle2">EQUIPOS DE LAVANDERÍA INDUSTRIAL</div>
+    </div>
+    <div class="top-cell top-right">
+        <div class="pedido-box">
+            <div class="pedido-label">No. de pedido</div>
+            <div class="pedido-value">{{ cot.numero_cotizacion }}</div>
+        </div>
+        <div style="font-size:8px;color:#cfe4ee;margin-top:4px">
+            {{ cot.fecha.day }}/{{ cot.fecha.month }}/{{ cot.fecha.year }}
+        </div>
+    </div>
+</div>
+
+<!-- ═══ BARRA DE CONTACTO ═══ -->
+<div class="contact-bar">
+    <span><span class="ico">●</span>{{ empresa.direccion }}</span>
+    <span><span class="ico">☎</span>{{ empresa.telefono }}</span>
+    <span><span class="ico">✉</span>{{ empresa.email }}</span>
+</div>
+
 <div class="content">
 
-<!-- HEADER: 6 LOGOS DE MARCAS -->
-<table class="brands-table">
-    <tr>
-        <td><img src="images/girbau.jpeg" alt="Girbau"></td>
-        <td><img src="images/maytag.jpeg" alt="Maytag"></td>
-        <td><img src="images/LG.jpeg" alt="LG"></td>
-        <td><img src="images/gamesail.jpeg" alt="Gamesail"></td>
-        <td><img src="images/adc.jpeg" alt="ADC"></td>
-        <td><img src="images/csf.jpeg" alt="CSF"></td>
-    </tr>
-</table>
+<!-- ═══ DATOS DEL CLIENTE ═══ -->
+<div class="card">
+    <div class="card-head"><span class="ico">👤</span>DATOS DEL CLIENTE</div>
+    <div class="card-body">
+        <table>
+            <tr>
+                <td class="lbl">NOMBRE:</td>
+                <td class="val" style="width:32%">{% if cot.cliente.atencion_titulo %}{{ cot.cliente.atencion_titulo }} {% endif %}{{ cot.cliente.atencion_nombre or cot.cliente.nombre_razon_social }}</td>
+                <td class="lbl" style="width:14%">RELACIÓN:</td>
+                <td class="val">{{ cot.cliente.relacion or '' }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">TELÉFONO:</td>
+                <td class="val">{{ cot.cliente.telefono or '' }}</td>
+                <td class="lbl">CARGO QUE OCUPA:</td>
+                <td class="val">{{ cot.cliente.cargo_ocupa or '' }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">DÍAS DE CONTACTO:</td>
+                <td class="val">{{ cot.cliente.dias_contacto or 'Lunes a Viernes' }}</td>
+                <td class="lbl">HORARIO DE CONTACTO:</td>
+                <td class="val">{{ cot.cliente.horario_contacto or '9:00 a 18:00' }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
 
-<!-- CABECERA EMPRESA -->
-<table class="head-table">
-    <tr>
-        <td class="head-empresa" rowspan="2">{{ empresa.nombre }}</td>
-        <td class="head-label">FECHA</td>
-        <td class="head-label">No. DE PEDIDO</td>
-    </tr>
-    <tr>
-        <td class="head-value">{{ cot.fecha.day }}/{{ cot.fecha.month }}/{{ cot.fecha.year }}</td>
-        <td class="head-value">{{ cot.numero_cotizacion }}</td>
-    </tr>
-</table>
+<!-- ═══ DOMICILIO DE ENTREGA ═══ -->
+<div class="card">
+    <div class="card-head"><span class="ico">📍</span>DOMICILIO DE ENTREGA</div>
+    <div class="card-body">
+        <table>
+            <tr>
+                <td class="lbl">NOMBRE:</td>
+                <td class="val" colspan="3">{{ cot.cliente.nombre_razon_social }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">DIRECCIÓN:</td>
+                <td class="val" style="width:32%">{{ cot.cliente.domicilio_entrega or '' }}</td>
+                <td class="lbl" style="width:14%">ESTADO:</td>
+                <td class="val">{{ cot.cliente.estado or '' }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">CIUDAD:</td>
+                <td class="val">{{ cot.cliente.ciudad or '' }}</td>
+                <td class="lbl">CÓDIGO POSTAL:</td>
+                <td class="val"></td>
+            </tr>
+            <tr>
+                <td class="lbl">COLONIA:</td>
+                <td class="val">---</td>
+                <td class="lbl">TELÉFONO:</td>
+                <td class="val">{{ cot.cliente.telefono or '---' }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
 
-<!-- DATOS DEL CONTACTO -->
-<div class="section-title">DATOS DEL CONTACTO</div>
-<table class="section-table">
-    <tr>
-        <td class="lbl">NOMBRE:</td>
-        <td colspan="3">{% if cot.cliente.atencion_titulo %}{{ cot.cliente.atencion_titulo }} {% endif %}{{ cot.cliente.atencion_nombre or '' }}</td>
-        <td class="lbl">RELACIÓN:</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td class="lbl">TELÉFONO DE CONTACTO:</td>
-        <td>{{ cot.cliente.telefono or '' }}</td>
-        <td class="lbl">CORREO ELECTRÓNICO:</td>
-        <td>{{ cot.cliente.email or '' }}</td>
-        <td class="lbl">CARGO QUE OCUPA:</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td class="lbl">DÍAS DE CONTACTO:</td>
-        <td>lunes - viernes</td>
-        <td class="lbl">HORARIO DE CONTACTO:</td>
-        <td>9:00 - 18:00</td>
-        <td></td>
-        <td></td>
-    </tr>
-</table>
-
-<!-- DOMICILIO DE ENTREGA -->
-<div class="section-title">DOMICILIO DE ENTREGA:</div>
-<table class="section-table">
-    <tr>
-        <td class="lbl">NOMBRE:</td>
-        <td colspan="5">{{ cot.cliente.nombre_razon_social }}</td>
-    </tr>
-    <tr>
-        <td class="lbl">DIRECCIÓN:</td>
-        <td colspan="3">{{ cot.cliente.domicilio_entrega or '' }}</td>
-        <td class="lbl">COLONIA:</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td class="lbl">CIUDAD:</td>
-        <td>{{ cot.cliente.ciudad or '' }}</td>
-        <td class="lbl">ESTADO:</td>
-        <td>{{ cot.cliente.estado or '' }}</td>
-        <td class="lbl">CÓDIGO POSTAL:</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td class="lbl">ENTRE LAS CALLES:</td>
-        <td colspan="3"></td>
-        <td class="lbl">TELÉFONO:</td>
-        <td>{{ cot.cliente.telefono or '' }}</td>
-    </tr>
-</table>
-
-<!-- DATOS DE FACTURACIÓN -->
-<div class="section-title">DATOS DE FACTURACIÓN:</div>
-<table class="section-table">
-    <tr>
-        <td class="lbl">NOMBRE:</td>
-        <td colspan="5">{{ cot.cliente.nombre_razon_social }}</td>
-    </tr>
-    <tr>
-        <td class="lbl">DIRECCIÓN:</td>
-        <td colspan="3">{{ cot.cliente.domicilio_empresa or '' }}</td>
-        <td class="lbl">COLONIA:</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td class="lbl">CIUDAD:</td>
-        <td>{{ cot.cliente.ciudad or '' }}</td>
-        <td class="lbl">ESTADO:</td>
-        <td>{{ cot.cliente.estado or '' }}</td>
-        <td class="lbl">CÓDIGO POSTAL:</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td class="lbl">RFC:</td>
-        <td>{{ cot.cliente.rfc or '' }}</td>
-        <td class="lbl">E MAIL:</td>
-        <td>{{ cot.cliente.email or '' }}</td>
-        <td class="lbl">MÉTODO DE PAGO:</td>
-        <td style="font-size:7.5px">PUE - Pago en una sola exhibición.</td>
-    </tr>
-    <tr>
-        <td class="lbl">USO DEL CFDI:</td>
-        <td colspan="3" style="font-size:7.5px">G03 - Gastos en general. &nbsp;·&nbsp; <strong>FORMA DE PAGO:</strong> 03 - Transferencia electrónica de fondos.</td>
-        <td class="lbl">TIPO DE CAMBIO:</td>
-        <td>{% if cot.tipo_cambio %}${{ "{:,.4f}".format(float(cot.tipo_cambio)) }}{% endif %}</td>
-    </tr>
-</table>
-
-<!-- TABLA DE PRODUCTOS -->
-<table class="products-table">
+<!-- ═══ TABLA DE PRODUCTOS / SERVICIOS ═══ -->
+<table class="products">
     <thead>
         <tr>
-            <th class="col-cant">CANTIDAD</th>
-            <th class="col-equipo">EQUIPO</th>
-            <th class="col-parte">No. PARTE</th>
-            <th class="col-desc descripcion-th">DESCRIPCIÓN</th>
-            <th class="col-precio">P. UNITARIO</th>
+            <th class="col-num">#</th>
+            <th class="col-marca">MARCA</th>
+            <th class="col-mod">MODELO</th>
+            <th class="col-desc">DESCRIPCIÓN DEL SERVICIO</th>
+            <th class="col-cant">CANT.</th>
+            <th class="col-uni">PRECIO UNITARIO</th>
             <th class="col-imp">IMPORTE</th>
         </tr>
     </thead>
     <tbody>
         {% for item in cot.items %}
         <tr>
+            <td class="col-num">{{ loop.index }}</td>
+            {% if item.servicio %}
+                <td class="col-marca">Servicio</td>
+                <td class="col-mod">—</td>
+                <td class="col-desc">
+                    <strong>{{ item.servicio.nombre }}</strong>{% if item.servicio.descripcion %} — {{ item.servicio.descripcion }}{% endif %}
+                </td>
+            {% elif item.producto %}
+                <td class="col-marca">{{ item.producto.marca }}</td>
+                <td class="col-mod">{{ item.producto.modelo }}</td>
+                <td class="col-desc">
+                    {{ item.producto.equipo }}{% if item.producto.descripcion %}
+                      {% set desc1 = item.producto.descripcion.split('\n')[0].strip().lstrip('*').strip() %}{% if desc1 %} — {{ desc1 }}{% endif %}
+                    {% endif %}
+                </td>
+            {% else %}
+                <td class="col-marca">—</td>
+                <td class="col-mod">—</td>
+                <td class="col-desc">{{ item.descripcion_libre or '' }}</td>
+            {% endif %}
             <td class="col-cant">{{ item.cantidad }}</td>
-            <td class="col-equipo">{{ item.producto.marca }} {{ item.producto.equipo }}</td>
-            <td class="col-parte">{{ item.producto.modelo }}</td>
-            <td class="col-desc">
-                {%- if item.producto.descripcion -%}
-                  {{ item.producto.descripcion.replace('\n', ' ').replace('*', '').strip() }}
-                {%- endif -%}
-            </td>
-            <td class="col-precio">${{ "{:,.2f}".format(float(item.precio_final) * tc) }}</td>
+            <td class="col-uni">${{ "{:,.2f}".format(float(item.precio_final) * tc) }}</td>
             <td class="col-imp">${{ "{:,.2f}".format(float(item.importe) * tc) }}</td>
         </tr>
         {% endfor %}
-        {# Filas vacías para llegar a ~14 renglones #}
-        {% set vacias = 14 - cot.items|length %}
-        {% if vacias > 0 %}
-          {% for _ in range(vacias) %}
-          <tr>
-            <td class="col-cant">&nbsp;</td>
-            <td class="col-equipo"></td>
-            <td class="col-parte"></td>
-            <td class="col-desc"></td>
-            <td class="col-precio">$0.00</td>
-            <td class="col-imp">$0.00</td>
-          </tr>
-          {% endfor %}
-        {% endif %}
-        <tr class="subtotal-row">
-            <td colspan="3"></td>
-            <td style="text-align:right;font-weight:bold">Subtotal</td>
-            <td></td>
-            <td class="col-imp">${{ "{:,.2f}".format(float(cot.subtotal) * tc) }}</td>
-        </tr>
     </tbody>
 </table>
 
-<!-- OBSERVACIONES + TOTALES -->
-<table class="bottom-table">
-    <tr>
-        <td class="obs-label" colspan="2">OBSERVACIONES:</td>
-        <td class="totals-lbl">SUB TOTAL:</td>
-        <td class="totals-val">${{ "{:,.2f}".format(float(cot.subtotal) * tc) }}</td>
-    </tr>
-    <tr>
-        <td class="obs-cell" colspan="2" rowspan="4" style="vertical-align:top">
-            {% if cot.notas %}{{ cot.notas }}{% endif %}
-            <div style="margin-top:6px;font-size:8px;text-align:center">
-                <strong>{{ empresa.nombre }}.</strong> RFC: SGO210826M44
-            </div>
-        </td>
-        <td class="totals-lbl">I V A:</td>
-        <td class="totals-val">${{ "{:,.2f}".format(float(cot.iva) * tc) }}</td>
-    </tr>
-    <tr>
-        <td class="totals-lbl">MN TOTAL:</td>
-        <td class="totals-val grand">${{ "{:,.2f}".format(float(cot.total) * tc) }}</td>
-    </tr>
-    <tr>
-        <td class="totals-lbl">ANTICIPO:</td>
-        <td class="totals-val"></td>
-    </tr>
-    <tr>
-        <td class="totals-lbl">SALDO:</td>
-        <td class="totals-val"></td>
-    </tr>
-</table>
+</div>  {# /.content (parte superior) #}
 
-<!-- FOOTER FINAL: SERVICIO TÉCNICO + VIGENCIA -->
-<table class="footer-info">
-    <tr>
-        <td colspan="2" style="text-align:left;font-size:8px;padding:6px 8px">
-            Espero contar con la oportunidad de serle de utilidad y asesorarlo de la mejor manera para que pueda recibir la solución
-            que usted realmente necesita y con las mejores condiciones del mercado.
-        </td>
-        <td class="titulo-tec" colspan="2">SERVICIO TECNICO Y POSVENTA</td>
-    </tr>
-    <tr>
-        <td class="vigencia" colspan="2">VIGENCIA DE COTIZACIÓN 15 DIAS</td>
-        <td colspan="2" style="font-size:8px;font-weight:bold">
-            {{ cot.vendedor.nombre }} &nbsp;&nbsp; {% set tel = cot.vendedor.telefono or empresa.telefono %}{% if tel %}CEL: {{ tel }}{% endif %}
-        </td>
-    </tr>
-</table>
+<!-- Espaciador: empuja el bloque triple y observaciones hacia abajo -->
+<div class="spacer"></div>
 
+<div class="content content-bottom">
+
+<!-- ═══ BLOQUE TRIPLE: ALCANCE + CONDICIONES + TOTALES ═══ -->
+<div class="triple">
+
+  <!-- ALCANCE DEL SERVICIO -->
+  <div class="triple-col col-alcance">
+      <div class="box-titulo"><span class="ico">✓</span>ALCANCE DEL SERVICIO</div>
+      <ul class="alcance-list">
+          {% if cot.alcance_servicio %}
+              {% for linea in cot.alcance_servicio.split('\n') %}
+                  {% set l = linea.strip().lstrip('-').lstrip('*').strip() %}
+                  {% if l %}<li>{{ l }}</li>{% endif %}
+              {% endfor %}
+          {% else %}
+              <li>Inspección detallada del equipo.</li>
+              <li>Limpieza profunda de componentes.</li>
+              <li>Revisión y ajuste de sistemas mecánicos.</li>
+              <li>Revisión de sistemas eléctricos y de control.</li>
+              <li>Lubricación y calibración.</li>
+              <li>Pruebas de operación y seguridad.</li>
+              <li>Entrega de reporte técnico.</li>
+          {% endif %}
+      </ul>
+  </div>
+
+  <!-- CONDICIONES COMERCIALES -->
+  <div class="triple-col col-condic">
+      <div class="box-titulo">CONDICIONES COMERCIALES</div>
+      <table class="condic-table">
+          <tr>
+              <td class="lbl">VIGENCIA DE LA COTIZACIÓN</td>
+              <td>15 días</td>
+          </tr>
+          <tr>
+              <td class="lbl">TIEMPO DE ENTREGA</td>
+              <td>{{ cot.tiempo_entrega or '6 a 8 semanas' }}</td>
+          </tr>
+          <tr>
+              <td class="lbl">MONEDA</td>
+              <td>{% if moneda == 'MXN' %}Peso Mexicano (MXN){% else %}Dólar ({{ moneda }}){% endif %}</td>
+          </tr>
+          <tr>
+              <td class="lbl">FORMA DE PAGO</td>
+              <td>{{ cot.forma_pago or 'Pago en una sola exhibición' }}</td>
+          </tr>
+      </table>
+  </div>
+
+  <!-- TOTALES -->
+  <div class="triple-col col-totales">
+      <div class="totales-box">
+          <table>
+              <tr>
+                  <td class="lbl">SUBTOTAL</td>
+                  <td class="val">${{ "{:,.2f}".format(float(cot.subtotal) * tc) }}</td>
+              </tr>
+              <tr>
+                  <td class="lbl">IVA (16%)</td>
+                  <td class="val">${{ "{:,.2f}".format(float(cot.iva) * tc) }}</td>
+              </tr>
+              <tr class="total-row">
+                  <td class="lbl" style="color:#fff">TOTAL</td>
+                  <td class="val">${{ "{:,.2f}".format(float(cot.total) * tc) }}</td>
+              </tr>
+          </table>
+      </div>
+      <div class="inversion-box">
+          <div class="inversion-label">TOTAL DE INVERSIÓN</div>
+          <div class="inversion-value">${{ "{:,.2f}".format(float(cot.total) * tc) }} {{ moneda }}</div>
+          <div class="inversion-letras">{{ numero_a_letras(float(cot.total) * tc, moneda) }}</div>
+      </div>
+  </div>
+
+</div>
+
+<!-- ═══ OBSERVACIONES + RFC ═══ -->
+<div class="obs-row">
+    <div class="obs-cell">
+        <strong>OBSERVACIONES</strong><br>
+        {% if cot.notas %}{{ cot.notas }}{% else %}No incluye refacciones ni instalación; en caso de requerirse se cotizarán para su autorización. En refacciones no incluidas en esta cotización, una vez que se tenga disponible en existencia, se cotizarán. En caso de hacer depósito en moneda nacional, se tomará el tipo de cambio de banco AFIRME al día de la operación.{% endif %}
+    </div>
+    <div class="rfc-cell">
+        <strong>{{ empresa.nombre }}</strong>
+        RFC: {{ empresa.rfc or 'SGO210826M44' }}
+    </div>
+</div>
+
+</div>  {# /.content (parte inferior) #}
+
+<!-- ═══ MARCAS QUE TRABAJAMOS ═══ -->
+<div class="brands-strip">
+    <span class="brands-label">MARCAS CON LAS QUE TRABAJAMOS</span>
+    <img src="images/girbau.jpeg"  alt="Girbau">
+    <img src="images/maytag.jpeg"  alt="Maytag">
+    <img src="images/LG.jpeg"      alt="LG">
+    <img src="images/gamesail.jpeg" alt="Gamesail">
+    <img src="images/adc.jpeg"     alt="ADC">
+    <img src="images/csf.jpeg"     alt="CMV Sharper Finish">
+</div>
+
+<!-- ═══ FOOTER BAR ═══ -->
+<div class="footer-bar">
+    <span class="izq">
+        <strong>SERVICIO REALIZADO POR TÉCNICOS CERTIFICADOS</strong><br>
+        <small>EN GIRBAU Y ALLIANCE LAUNDRY</small>
+    </span>
+    <span class="der">
+        <strong>EXPERIENCIA, CALIDAD Y RESPALDO</strong><br>
+        <small>EN CADA SERVICIO</small>
+    </span>
+</div>
+
+<div class="foot-direccion">
+    {{ empresa.direccion }} &nbsp;·&nbsp; Tel. {{ empresa.telefono }}
 </div>
 
 </section>

@@ -44,6 +44,7 @@ def _cot_options():
         joinedload(models.Cotizacion.cliente),
         joinedload(models.Cotizacion.vendedor),
         selectinload(models.Cotizacion.items).joinedload(models.CotizacionItem.producto).selectinload(models.Producto.imagenes),
+        selectinload(models.Cotizacion.items).joinedload(models.CotizacionItem.servicio),
     ]
 
 
@@ -106,31 +107,55 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             tipo_cambio=round(tc, 4) if tc else None,
             empresa=empresa_code,
             empresa_id=empresa.id,
+            alcance_servicio=data.alcance_servicio,
+            tiempo_entrega=data.tiempo_entrega,
+            forma_pago=data.forma_pago,
         )
         db.add(cotizacion)
         db.flush()
 
         subtotal = 0.0
         for item_data in data.items:
-            producto = db.query(models.Producto).filter(
-                models.Producto.id == item_data.producto_id,
-                models.Producto.activo == True
-            ).first()
-            if not producto:
-                raise HTTPException(status_code=404, detail=f"Producto {item_data.producto_id} no encontrado")
+            # Validar que sea producto o servicio (exclusivo)
+            if not item_data.producto_id and not item_data.servicio_id:
+                raise HTTPException(status_code=400, detail="Cada ítem debe ser producto o servicio")
+            if item_data.producto_id and item_data.servicio_id:
+                raise HTTPException(status_code=400, detail="Un ítem no puede ser producto y servicio a la vez")
 
-            # Precio específico para esta empresa
-            pe = db.query(models.ProductoEmpresa).filter(
-                models.ProductoEmpresa.producto_id == producto.id,
-                models.ProductoEmpresa.empresa_id == empresa.id,
-                models.ProductoEmpresa.activo == True,
-            ).first()
-            if not pe:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"El producto {producto.modelo} no está disponible en la empresa {empresa.nombre}"
-                )
-            precio_lista_emp = float(pe.precio_lista)
+            precio_lista_emp = None
+            producto = None
+            servicio = None
+
+            if item_data.producto_id:
+                producto = db.query(models.Producto).filter(
+                    models.Producto.id == item_data.producto_id,
+                    models.Producto.activo == True
+                ).first()
+                if not producto:
+                    raise HTTPException(status_code=404, detail=f"Producto {item_data.producto_id} no encontrado")
+
+                pe = db.query(models.ProductoEmpresa).filter(
+                    models.ProductoEmpresa.producto_id == producto.id,
+                    models.ProductoEmpresa.empresa_id == empresa.id,
+                    models.ProductoEmpresa.activo == True,
+                ).first()
+                if not pe:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"El producto {producto.modelo} no está disponible en la empresa {empresa.nombre}"
+                    )
+                precio_lista_emp = float(pe.precio_lista)
+            else:
+                servicio = db.query(models.Servicio).filter(
+                    models.Servicio.id == item_data.servicio_id,
+                    models.Servicio.activo == True
+                ).first()
+                if not servicio:
+                    raise HTTPException(status_code=404, detail=f"Servicio {item_data.servicio_id} no encontrado")
+                # Servicios solo aplican a empresa Servicios de Lavandería
+                if empresa.codigo != 'servicios_lavanderia':
+                    raise HTTPException(status_code=400, detail="Los servicios solo pueden cotizarse en Servicios de Lavandería")
+                precio_lista_emp = float(servicio.precio_unitario)
 
             # Validar rango de ajuste
             if not (float(current_user.margen_min) <= item_data.porcentaje_ajuste <= float(current_user.margen_max)):
@@ -146,6 +171,8 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             item = models.CotizacionItem(
                 cotizacion_id=cotizacion.id,
                 producto_id=item_data.producto_id,
+                servicio_id=item_data.servicio_id,
+                descripcion_libre=item_data.descripcion_libre,
                 cantidad=item_data.cantidad,
                 precio_lista=precio_lista_emp,
                 porcentaje_ajuste=item_data.porcentaje_ajuste,

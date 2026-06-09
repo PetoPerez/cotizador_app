@@ -113,13 +113,19 @@ function estadoBadge(estado) {
 function renderSidebar(active) {
   const user = getUser();
   const isAdmin = user.rol === 'admin';
+  const isSDL   = user.empresa_codigo === 'servicios_lavanderia';
 
   const links = [
     { key: 'cotizaciones', label: 'Cotizaciones', href: '/cotizaciones' },
     { key: 'clientes',     label: 'Clientes',     href: '/clientes' },
     { key: 'productos',    label: 'Productos',     href: '/productos',  adminOnly: true },
+    { key: 'servicios',    label: 'Servicios',     href: '/servicios',  show: isAdmin || isSDL },
     { key: 'usuarios',     label: 'Usuarios',      href: '/usuarios',   adminOnly: true },
-  ].filter(l => !l.adminOnly || isAdmin);
+  ].filter(l => {
+    if (l.adminOnly) return isAdmin;
+    if ('show' in l) return l.show;
+    return true;
+  });
 
   return `
     <aside class="sidebar">

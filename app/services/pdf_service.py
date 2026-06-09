@@ -2,6 +2,7 @@ from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 import os
 from app.config import settings
+from app.utils.numero_letras import numero_a_letras
 
 template_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
 env = Environment(loader=FileSystemLoader(template_dir))
@@ -57,8 +58,20 @@ def generar_pdf(cotizacion) -> bytes:
     base_url = f"file://{os.path.abspath(static_dir)}/"
     moneda = getattr(cotizacion, 'moneda', 'MXN') or 'MXN'
     tc_raw = getattr(cotizacion, 'tipo_cambio', None)
-    # Precios en BD están en USD, multiplicamos por TC para MXN
-    tc = float(tc_raw) if tc_raw and moneda == 'MXN' else 1.0
+    # Factor por el que se multiplica el precio guardado en BD para mostrarlo en la moneda solicitada.
+    #   Servicios de Lavandería: precios guardados en MXN.
+    #     - cotización MXN → tc = 1
+    #     - cotización USD → tc = 1/TC (dividir para convertir MXN→USD)
+    #   Otras empresas: precios guardados en USD.
+    #     - cotización MXN → tc = TC (multiplicar para convertir USD→MXN)
+    #     - cotización USD → tc = 1
+    if empresa_code == 'servicios_lavanderia':
+        if moneda == 'USD' and tc_raw and float(tc_raw) > 0:
+            tc = 1.0 / float(tc_raw)
+        else:
+            tc = 1.0
+    else:
+        tc = float(tc_raw) if tc_raw and moneda == 'MXN' else 1.0
 
     template = env.get_template(template_name)
     html_str = template.render(
@@ -68,5 +81,6 @@ def generar_pdf(cotizacion) -> bytes:
         moneda=moneda,
         tc=tc,
         float=float,
+        numero_a_letras=numero_a_letras,
     )
     return HTML(string=html_str, base_url=base_url).write_pdf()

@@ -164,8 +164,8 @@
 
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-              <div style="font-size:15px;font-weight:600">Productos</div>
-              <button class="btn btn-secondary btn-sm" onclick="agregarItem()">+ Agregar producto</button>
+              <div id="items-titulo" style="font-size:15px;font-weight:600">Productos</div>
+              <button id="items-add-btn" class="btn btn-secondary btn-sm" onclick="agregarItem()">+ Agregar producto</button>
             </div>
             <div id="items-container">
               <div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">
@@ -374,6 +374,7 @@ const isAdmin = user.rol === 'admin';
 
 let cotizaciones = [];
 let productos = [];
+let servicios = [];
 let clientes = [];
 let empresas = [];
 let items = [];       // items del formulario nueva cotización
@@ -414,18 +415,47 @@ function productosDisponibles() {
   );
 }
 
+// Modo "servicios": cuando todas las empresas seleccionadas son servicios_lavanderia
+function esModoServicios() {
+  return empresasSeleccionadas.length > 0 &&
+         empresasSeleccionadas.every(c => c === 'servicios_lavanderia');
+}
+
+function entidadDelItem(item) {
+  if (item.servicioId) return servicios.find(s => s.id === item.servicioId) || null;
+  if (item.productoId) return productos.find(p => p.id === item.productoId) || null;
+  return null;
+}
+
+function precioListaEntidad(entidad, esServicio) {
+  if (!entidad) return 0;
+  if (esServicio) return parseFloat(entidad.precio_unitario);
+  return parseFloat(entidad.precio_lista) || 0;
+}
+
+function actualizarLabelesItems() {
+  // Actualiza el título del card y el botón
+  const isSvc = esModoServicios();
+  const titulo = document.getElementById('items-titulo');
+  const btn = document.getElementById('items-add-btn');
+  if (titulo) titulo.textContent = isSvc ? 'Servicios' : 'Productos';
+  if (btn)    btn.textContent    = isSvc ? '+ Agregar servicio' : '+ Agregar producto';
+}
+
 // ─── Inicialización ───────────────────────────────────────
 async function init() {
   try {
-    [cotizaciones, productos, clientes, empresas] = await Promise.all([
+    [cotizaciones, productos, servicios, clientes, empresas] = await Promise.all([
       apiFetch('/cotizaciones/'),
       apiFetch('/productos/'),
+      apiFetch('/servicios/').catch(() => []),
       apiFetch('/clientes/'),
       apiFetch('/empresas/'),
     ]);
     await loadTipoCambio();
     configurarEmpresasPorRol();
     aplicarPrecioEfectivo();
+    actualizarLabelesItems();
     renderStats();
     renderTabla(cotizaciones);
   } catch (e) {
@@ -437,7 +467,12 @@ async function init() {
 function renderStats() {
   const total = cotizaciones.length;
   const aceptadas = cotizaciones.filter(c => c.estado === 'aceptada').length;
-  const montoTotal = cotizaciones.filter(c => c.estado === 'aceptada').reduce((s, c) => s + c.total, 0);
+  // Para SDL precios ya están en MXN; para las demás (USD en BD) convertimos por su tc.
+  const montoTotal = cotizaciones.filter(c => c.estado === 'aceptada').reduce((s, c) => {
+    if (c.empresa === 'servicios_lavanderia') return s + (c.total || 0);
+    const tc = (c.moneda === 'MXN' ? (c.tipo_cambio || 1) : 1);
+    return s + (c.total || 0) * tc;
+  }, 0);
   const pendientes = cotizaciones.filter(c => c.estado === 'enviada').length;
 
   document.getElementById('stats-grid').innerHTML = `
@@ -481,9 +516,16 @@ function renderTabla(data) {
     return;
   }
   tbody.innerHTML = data.map(c => {
-    const tc = c.tipo_cambio || 1;
     const moneda = c.moneda || 'MXN';
-    const totalDisplay = formatCurrency(c.total, moneda, tc);
+    const tcReal = c.tipo_cambio || 1;
+    // SDL: total guardado en MXN. Otras: total guardado en USD.
+    let display;
+    if (c.empresa === 'servicios_lavanderia') {
+      display = (moneda === 'USD') ? c.total / tcReal : c.total;
+    } else {
+      display = (moneda === 'MXN') ? c.total * tcReal : c.total;
+    }
+    const totalDisplay = formatCurrency(display, moneda, 1);
     return `
     <tr>
       <td><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">${c.numero_cotizacion}</span></td>
@@ -550,6 +592,7 @@ function actualizarEmpresas() {
   if (document.getElementById('chk-supliese').checked) empresasSeleccionadas.push('supliese');
   if (document.getElementById('chk-servicios-lavanderia').checked) empresasSeleccionadas.push('servicios_lavanderia');
   aplicarPrecioEfectivo();
+  actualizarLabelesItems();
   renderItems();
   calcularTotales();
 }
@@ -647,6 +690,8 @@ function agregarItem() {
   const user = getUser();
   items.push({
     productoId: null,
+    servicioId: null,
+    esServicio: esModoServicios(),
     cantidad: 1,
     ajuste: 0,
     margenMin: user.margen_min ?? -10,
@@ -664,28 +709,36 @@ function renderItems() {
   }
 
   container.innerHTML = items.map((item, i) => {
-    const producto = productos.find(p => p.id === item.productoId);
-    const precioLista = producto ? parseFloat(producto.precio_lista) : 0;
+    const entidad = entidadDelItem(item);
+    const precioLista = precioListaEntidad(entidad, item.esServicio);
     const precioFinal = precioLista * (1 + item.ajuste / 100);
     const importe = precioFinal * item.cantidad;
+    const label = item.esServicio ? 'Servicio' : 'Producto';
+    const placeholder = item.esServicio ? 'Buscar servicio por nombre...' : 'Buscar por marca, equipo o modelo...';
+
+    // Renderizar nombre del seleccionado
+    const nombreSel = entidad ?
+      (item.esServicio
+         ? `<div style="font-weight:600;font-size:13px;color:var(--text)">${entidad.nombre}</div>
+            <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${formatMXN(precioLista)}</div>`
+         : `<div style="font-weight:600;font-size:13px;color:var(--text)">${entidad.marca} · ${entidad.equipo}</div>
+            <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${entidad.modelo} · ${formatMXN(precioLista)}</div>`)
+      : '';
 
     return `
     <div class="item-row" id="item-row-${i}">
       <button class="remove-btn" onclick="quitarItem(${i})">×</button>
       <div class="item-grid">
         <div class="form-group" style="margin-bottom:0;position:relative">
-          <label class="form-label">Producto</label>
-          ${producto ? `
+          <label class="form-label">${label}</label>
+          ${entidad ? `
             <div style="background:var(--bg);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <div style="font-weight:600;font-size:13px;color:var(--text)">${producto.marca} · ${producto.equipo}</div>
-                <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${producto.modelo} · ${formatMXN(precioLista)}</div>
-              </div>
+              <div>${nombreSel}</div>
               <button onclick="limpiarProductoItem(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;padding:0 6px">×</button>
             </div>
           ` : `
             <input type="text" class="form-control" id="prod-search-${i}"
-                   placeholder="Buscar por marca, equipo o modelo..."
+                   placeholder="${placeholder}"
                    oninput="buscarProductoItem(${i}, this.value)"
                    autocomplete="off">
             <div id="prod-dd-${i}"
@@ -700,7 +753,7 @@ function renderItems() {
             onchange="cambiarCantidad(${i}, this.value)">
         </div>
       </div>
-      ${producto ? `
+      ${entidad ? `
       <div style="margin-top:12px">
         <label class="form-label">Ajuste de precio</label>
         <div class="slider-wrap">
@@ -740,13 +793,21 @@ function buscarProductoItem(i, q) {
   const texto = q.trim().toLowerCase();
   if (!texto) { dd.style.display = 'none'; return; }
 
-  const disponibles = productosDisponibles();
-  const matches = disponibles.filter(p =>
-    p.marca.toLowerCase().includes(texto) ||
-    p.equipo.toLowerCase().includes(texto) ||
-    p.modelo.toLowerCase().includes(texto) ||
-    (p.descripcion || '').toLowerCase().includes(texto)
-  ).slice(0, 10);
+  const esSvc = items[i].esServicio;
+  let matches;
+  if (esSvc) {
+    matches = servicios.filter(s =>
+      s.nombre.toLowerCase().includes(texto) ||
+      (s.descripcion || '').toLowerCase().includes(texto)
+    ).slice(0, 10);
+  } else {
+    matches = productosDisponibles().filter(p =>
+      p.marca.toLowerCase().includes(texto) ||
+      p.equipo.toLowerCase().includes(texto) ||
+      p.modelo.toLowerCase().includes(texto) ||
+      (p.descripcion || '').toLowerCase().includes(texto)
+    ).slice(0, 10);
+  }
 
   if (!matches.length) {
     dd.innerHTML = `<div style="padding:12px 14px;color:var(--text3);font-size:13px">Sin resultados</div>`;
@@ -754,29 +815,51 @@ function buscarProductoItem(i, q) {
     return;
   }
 
-  dd.innerHTML = matches.map(p => `
-    <div onclick="seleccionarProductoItem(${i}, '${p.id}')"
-         style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s"
-         onmouseover="this.style.background='var(--bg2)'"
-         onmouseout="this.style.background=''">
-      <div style="font-weight:600;font-size:13px;color:var(--text)">${p.marca} · ${p.equipo}</div>
-      <div style="display:flex;gap:16px;margin-top:3px">
-        <span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${p.modelo}</span>
-        <span style="font-size:12px;color:var(--accent2);font-weight:600">${formatMXN(p.precio_lista)}</span>
+  if (esSvc) {
+    dd.innerHTML = matches.map(s => `
+      <div onclick="seleccionarProductoItem(${i}, '${s.id}')"
+           style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s"
+           onmouseover="this.style.background='var(--bg2)'"
+           onmouseout="this.style.background=''">
+        <div style="font-weight:600;font-size:13px;color:var(--text)">${s.nombre}</div>
+        <div style="display:flex;gap:16px;margin-top:3px">
+          <span style="font-size:12px;color:var(--text3)">${(s.descripcion || '').substring(0, 60)}</span>
+          <span style="font-size:12px;color:var(--accent2);font-weight:600;margin-left:auto">${formatMXN(s.precio_unitario)}</span>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+  } else {
+    dd.innerHTML = matches.map(p => `
+      <div onclick="seleccionarProductoItem(${i}, '${p.id}')"
+           style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s"
+           onmouseover="this.style.background='var(--bg2)'"
+           onmouseout="this.style.background=''">
+        <div style="font-weight:600;font-size:13px;color:var(--text)">${p.marca} · ${p.equipo}</div>
+        <div style="display:flex;gap:16px;margin-top:3px">
+          <span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${p.modelo}</span>
+          <span style="font-size:12px;color:var(--accent2);font-weight:600">${formatMXN(p.precio_lista)}</span>
+        </div>
+      </div>
+    `).join('');
+  }
   dd.style.display = 'block';
 }
 
-function seleccionarProductoItem(i, productoId) {
-  items[i].productoId = productoId;
+function seleccionarProductoItem(i, entidadId) {
+  if (items[i].esServicio) {
+    items[i].servicioId = entidadId;
+    items[i].productoId = null;
+  } else {
+    items[i].productoId = entidadId;
+    items[i].servicioId = null;
+  }
   items[i].ajuste = 0;
   renderItems();
 }
 
 function limpiarProductoItem(i) {
   items[i].productoId = null;
+  items[i].servicioId = null;
   renderItems();
 }
 
@@ -787,9 +870,9 @@ function cambiarCantidad(i, val) {
 
 function cambiarAjuste(i, val) {
   items[i].ajuste = parseFloat(val);
-  const producto = productos.find(p => p.id === items[i].productoId);
-  if (!producto) return;
-  const precioLista = parseFloat(producto.precio_lista);
+  const entidad = entidadDelItem(items[i]);
+  if (!entidad) return;
+  const precioLista = precioListaEntidad(entidad, items[i].esServicio);
   const precioFinal = precioLista * (1 + items[i].ajuste / 100);
   const importe = precioFinal * items[i].cantidad;
   const row = document.getElementById(`item-row-${i}`);
@@ -806,10 +889,10 @@ function cambiarAjuste(i, val) {
 function cambiarPrecioManual(i, val) {
   const precio = parseFloat(val);
   if (isNaN(precio) || precio <= 0) return;
-  const producto = productos.find(p => p.id === items[i].productoId);
-  if (!producto) return;
+  const entidad = entidadDelItem(items[i]);
+  if (!entidad) return;
 
-  const precioLista = parseFloat(producto.precio_lista);
+  const precioLista = precioListaEntidad(entidad, items[i].esServicio);
   let ajuste = ((precio / precioLista) - 1) * 100;
 
   const fuera = ajuste < items[i].margenMin || ajuste > items[i].margenMax;
@@ -837,9 +920,9 @@ function cambiarPrecioManual(i, val) {
 function normalizarPrecio(i) {
   const input = document.getElementById(`precio-unit-${i}`);
   if (!input) return;
-  const producto = productos.find(p => p.id === items[i].productoId);
-  if (!producto) return;
-  const precioFinal = parseFloat(producto.precio_lista) * (1 + items[i].ajuste / 100);
+  const entidad = entidadDelItem(items[i]);
+  if (!entidad) return;
+  const precioFinal = precioListaEntidad(entidad, items[i].esServicio) * (1 + items[i].ajuste / 100);
   input.value = precioFinal.toFixed(2);
   input.style.borderColor = 'var(--border)';
 }
@@ -852,24 +935,37 @@ function quitarItem(i) {
 function calcularTotales() {
   let subtotal = 0;
   items.forEach(item => {
-    const producto = productos.find(p => p.id === item.productoId);
-    if (!producto) return;
-    const precioFinal = parseFloat(producto.precio_lista) * (1 + item.ajuste / 100);
+    const entidad = entidadDelItem(item);
+    if (!entidad) return;
+    const precioFinal = precioListaEntidad(entidad, item.esServicio) * (1 + item.ajuste / 100);
     subtotal += precioFinal * item.cantidad;
   });
   const iva = subtotal * 0.16;
   const total = subtotal + iva;
-  const tc = getTipoCambio() || 1;
-  document.getElementById('r-subtotal').textContent = formatCurrency(subtotal, monedaSeleccionada, tc);
-  document.getElementById('r-iva').textContent = formatCurrency(iva, monedaSeleccionada, tc);
-  document.getElementById('r-total').textContent = formatCurrency(total, monedaSeleccionada, tc);
+
+  const tcReal = getTipoCambio() || 1;
+  const esSvc = esModoServicios();
+
+  // Convierte el monto interno (USD para productos, MXN para servicios) a la moneda mostrada.
+  function convertir(monto) {
+    if (esSvc) {
+      // Interno = MXN
+      return monedaSeleccionada === 'USD' ? monto / tcReal : monto;
+    }
+    // Interno = USD
+    return monedaSeleccionada === 'MXN' ? monto * tcReal : monto;
+  }
+
+  document.getElementById('r-subtotal').textContent = formatCurrency(convertir(subtotal), monedaSeleccionada, 1);
+  document.getElementById('r-iva').textContent      = formatCurrency(convertir(iva),      monedaSeleccionada, 1);
+  document.getElementById('r-total').textContent    = formatCurrency(convertir(total),    monedaSeleccionada, 1);
 }
 
 // ─── Generar cotización ───────────────────────────────────
 async function generarCotizacion() {
   if (!clienteId) { showAlert('Selecciona un cliente'); return; }
-  const itemsValidos = items.filter(i => i.productoId);
-  if (!itemsValidos.length) { showAlert('Agrega al menos un producto'); return; }
+  const itemsValidos = items.filter(i => i.productoId || i.servicioId);
+  if (!itemsValidos.length) { showAlert('Agrega al menos un producto o servicio'); return; }
   if (!empresasSeleccionadas.length) { showAlert('Selecciona al menos una empresa'); return; }
 
   const btn = document.getElementById('btn-generar');
@@ -884,7 +980,8 @@ async function generarCotizacion() {
       tipo_cambio: tipoCambioEditable,
       empresas: empresasSeleccionadas,
       items: itemsValidos.map(i => ({
-        producto_id: i.productoId,
+        producto_id: i.productoId || null,
+        servicio_id: i.servicioId || null,
         cantidad: i.cantidad,
         porcentaje_ajuste: i.ajuste,
       })),

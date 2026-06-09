@@ -45,7 +45,7 @@ body {
   z-index: 100;
   background: #fff;
   padding: 8px 28px 5px;
-  border-bottom: 4px solid #00A8E1;
+  border-bottom: 4px solid #1782a6;
 }
 .page-header .hdr-table { margin-bottom: 0; }
 .page-header .logo-clm  { font-size: 38px; letter-spacing: 4px; }
@@ -58,7 +58,7 @@ body {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 100;
-  border-top: 4px solid #00A8E1;
+  border-top: 4px solid #1782a6;
   background: #fff;
   text-align: center;
   padding: 5px 28px 8px;
@@ -93,7 +93,7 @@ body {
   background-color: transparent;
 }
 
-.wrap .prod-table th { background: #00A8E1; }
+.wrap .prod-table th { background: #1782a6; }
 
 /* ─────────────────────────────────────────
    CABECERA: LOGO + DOTS
@@ -107,7 +107,7 @@ body {
   font-family: Arial, 'Helvetica Neue', sans-serif;
   font-size: 42px;
   font-weight: 900;
-  color: #2B3990;
+  color: #616161;
   letter-spacing: 1px;
   line-height: 1;
 }
@@ -115,7 +115,7 @@ body {
   font-family: Arial, 'Helvetica Neue', sans-serif;
   font-size: 14px;
   font-weight: 400;
-  color: #00A8E1;
+  color: #1782a6;
   letter-spacing: 2px;
   margin-top: 2px;
   display: block;
@@ -126,7 +126,7 @@ body {
 .dot {
   display: inline-block;
   border-radius: 50%;
-  background: #00A8E1;
+  background: #1782a6;
   margin-left: 3px;
   vertical-align: middle;
 }
@@ -145,7 +145,7 @@ body {
    ───────────────────────────────────────── */
 .cli-nombre { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
 .cli-det    { font-size: 9.5px; line-height: 1.8; }
-.greeting   { color: #00A8E1; font-weight: bold; font-size: 11px; margin: 10px 0 4px; }
+.greeting   { color: #1782a6; font-weight: bold; font-size: 11px; margin: 10px 0 4px; }
 .intro      { font-size: 9.5px; line-height: 1.65; margin-bottom: 14px; }
 
 /* ─────────────────────────────────────────
@@ -171,7 +171,7 @@ body {
   background: transparent;
 }
 .prod-table th {
-  background: #00A8E1; color: #fff;
+  background: #1782a6; color: #fff;
   padding: 5px 12px; text-align: center;
   font-size: 10px; font-weight: bold;
 }
@@ -219,12 +219,12 @@ body {
   margin-top: 18px; text-align: right;
   page-break-inside: avoid; break-inside: avoid;
 }
-.presup-title { color: #00A8E1; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+.presup-title { color: #1782a6; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
 .presup-table { margin-left: auto; border-collapse: collapse; min-width: 260px; background: transparent; }
 .presup-table td { padding: 3px 12px; font-size: 10px; text-align: right; background: transparent; }
 .presup-table .total-row td {
-  font-weight: bold; font-size: 15px; color: #00A8E1;
-  border-top: 2px solid #00A8E1; padding-top: 6px;
+  font-weight: bold; font-size: 15px; color: #1782a6;
+  border-top: 2px solid #1782a6; padding-top: 6px;
 }
 
 .notas { margin-top: 12px; font-size: 9px; font-style: italic; color: #555; }
@@ -241,29 +241,29 @@ body {
   padding-top: 16px;
 }
 .cl-h2 {
-  font-size: 9.5px; font-weight: bold; color: #00A8E1;
+  font-size: 9.5px; font-weight: bold; color: #1782a6;
   margin: 9px 0 4px; text-transform: uppercase;
   page-break-after: avoid; break-after: avoid;
 }
 .cl-p  { margin-bottom: 3px; orphans: 3; widows: 3; }
 .cl-bold { font-weight: bold; }
-.firma { margin-top: 28px; text-align: center; display: inline-block; float: right; font-size: 9.5px; }
+.firma { margin-top: 98px; text-align: center; display: inline-block; float: right; font-size: 9.5px; }
 </style>
 </head>
 <body>
 
 <!-- Marca de agua -->
-<img class="watermark" src="images/supliese_gamesail.jpeg" alt="">
+<img class="watermark" src="{{ empresa.logo_url or 'images/supliese_gamesail.jpeg' }}" alt="">
 
 <!-- Encabezado fijo (todas las páginas) -->
 <div class="page-header">
   <table class="hdr-table">
     <tr>
       <td class="hdr-logo-cell">
-        <img src="images/supliese_gamesail.jpeg" alt="Supliese by Gamesail" style="height:95px;display:block">
+        <img src="{{ empresa.logo_url or 'images/supliese_gamesail.jpeg' }}" alt="Gamesail" style="height:95px;display:block">
       </td>
       <td class="hdr-dots-cell">
-        <img src="images/gamesail_r.jpeg" alt="" style="height:95px;width:auto;display:inline-block">
+        <img src="{{ empresa.logo_decoracion_url or 'images/gamesail_r.jpeg' }}" alt="" style="height:95px;width:auto;display:inline-block">
       </td>
     </tr>
   </table>

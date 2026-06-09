@@ -11,7 +11,7 @@ from app.config import settings
 from app.limiter import limiter
 from app.database import engine, Base
 from app import models  # registra todos los modelos con Base
-from app.routers import auth, usuarios, clientes, productos, cotizaciones, empresas
+from app.routers import auth, usuarios, clientes, productos, cotizaciones, empresas, servicios
 
 app = FastAPI(title="Sistema de Cotizaciones", version="1.0.0")
 app.state.limiter = limiter
@@ -45,6 +45,30 @@ def on_startup():
         conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS rfc VARCHAR(20)"))
         conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS domicilio_empresa TEXT"))
         conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS domicilio_entrega TEXT"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS dias_contacto VARCHAR(100)"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS horario_contacto VARCHAR(50)"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS relacion VARCHAR(100)"))
+        conn.execute(text("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS cargo_ocupa VARCHAR(100)"))
+        conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS alcance_servicio TEXT"))
+        conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS tiempo_entrega VARCHAR(50)"))
+        conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS forma_pago VARCHAR(150)"))
+        # Quitar NOT NULL de productos.precio_lista (ahora vive en producto_empresa)
+        conn.execute(text("ALTER TABLE productos ALTER COLUMN precio_lista DROP NOT NULL"))
+        # Tabla servicios (catálogo específico de Servicios de Lavandería)
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS servicios (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                nombre VARCHAR(200) NOT NULL,
+                descripcion TEXT,
+                precio_unitario NUMERIC(12,2) NOT NULL,
+                activo BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        # Permitir items de servicio en cotizacion_items
+        conn.execute(text("ALTER TABLE cotizacion_items ALTER COLUMN producto_id DROP NOT NULL"))
+        conn.execute(text("ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS servicio_id UUID REFERENCES servicios(id)"))
+        conn.execute(text("ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS descripcion_libre TEXT"))
         # Actualizar márgenes de usuarios existentes de -10/+10 a -5/+5
         conn.execute(text("UPDATE usuarios SET margen_min = -5.00 WHERE margen_min = -10.00"))
         conn.execute(text("UPDATE usuarios SET margen_max = 5.00 WHERE margen_max = 10.00"))
@@ -151,6 +175,7 @@ api.include_router(clientes.router)
 api.include_router(productos.router)
 api.include_router(cotizaciones.router)
 api.include_router(empresas.router)
+api.include_router(servicios.router)
 app.include_router(api)
 
 # ── Rutas de páginas HTML ────────────────────────────────────
@@ -178,6 +203,10 @@ def page_clientes():
 @app.get("/productos", include_in_schema=False)
 def page_productos():
     return _page("productos")
+
+@app.get("/servicios", include_in_schema=False)
+def page_servicios():
+    return _page("servicios")
 
 @app.get("/usuarios", include_in_schema=False)
 def page_usuarios():
