@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Cotización CLM</title>
+<title>Cotización Girbau</title>
 <style>
 
 @page {
@@ -45,7 +45,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url('{{ empresa.logo_url or "images/clm.jpeg" }}');
+    background-image: url('{{ empresa.logo_url or "images/girbau_logo.jpeg" }}');
     background-position: center center;
     background-repeat: no-repeat;
     background-size: 250px auto;
@@ -74,7 +74,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
-    background: #a71b1c;
+    background: #007788;
     z-index: 10;
 }
 
@@ -89,7 +89,7 @@ body {
     align-items: flex-start;
     margin-bottom: 12px;
     padding-bottom: 10px;
-    border-bottom: 3px solid #a71b1c;
+    border-bottom: 3px solid #007788;
 }
 
 .logo-clm {
@@ -133,7 +133,7 @@ body {
     font-size: 14px;
     font-weight: bold;
     margin-bottom: 3px;
-    color: #26326e;
+    color: #606060;
 }
 
 .meta-right {
@@ -154,11 +154,11 @@ body {
     font-size: 12px;
     font-weight: bold;
     margin-bottom: 3px;
-    color: #26326e;
+    color: #606060;
 }
 
 .greeting {
-    color: #a71b1c;
+    color: #007788;
     font-weight: bold;
     font-size: 11px;
     margin: 14px 0 5px;
@@ -183,7 +183,7 @@ body {
 }
 
 .products-table thead tr {
-    background: #a71b1c;
+    background: #007788;
     color: white;
 }
 
@@ -274,7 +274,7 @@ body {
 }
 
 .final-title {
-    color: #a71b1c;
+    color: #007788;
     font-size: 15px;
     font-weight: bold;
     margin-bottom: 8px;
@@ -293,8 +293,8 @@ body {
 .final-row.total {
     font-weight: bold;
     font-size: 16px;
-    color: #a71b1c;
-    border-top: 2px solid #a71b1c;
+    color: #007788;
+    border-top: 2px solid #007788;
     padding-top: 7px;
 }
 
@@ -312,7 +312,7 @@ body {
     margin: 0 12mm 8mm 12mm;
     text-align: center;
     font-size: 9px;
-    border-top: 3px solid #a71b1c;
+    border-top: 3px solid #007788;
     padding-top: 6px;
     page-break-inside: avoid;
     break-inside: avoid;
@@ -337,7 +337,7 @@ body {
 .legal h3 {
     margin: 12px 0 6px;
     font-size: 10px;
-    color: #a71b1c;
+    color: #007788;
     font-weight: bold;
     text-transform: uppercase;
 }
@@ -379,10 +379,10 @@ body {
 
 <div class="header-block">
     <div class="logo-clm">
-        <img src="{{ empresa.logo_url or 'images/clm.jpeg' }}" alt="CLM">
+        <img src="{{ empresa.logo_url or 'images/girbau_logo.jpeg' }}" alt="Girbau">
     </div>
     <div class="dots-area">
-        <img src="{{ empresa.logo_decoracion_url or 'images/clm_r.jpeg' }}" alt="" class="header-deco">
+        {% if empresa.logo_decoracion_url %}<img src="{{ empresa.logo_decoracion_url }}" alt="" class="header-deco">{% endif %}
     </div>
 </div>
 
@@ -415,7 +415,7 @@ body {
 
 {% if cot.ciudad_entrega %}
 <div style="margin-top:10px;font-size:10px">
-    <strong style="color:#a71b1c">Ciudad de entrega:</strong> {{ cot.ciudad_entrega }}
+    <strong style="color:#007788">Ciudad de entrega:</strong> {{ cot.ciudad_entrega }}
 </div>
 {% endif %}
 
@@ -513,10 +513,10 @@ body {
 
 <div class="header-block">
     <div class="logo-clm">
-        <img src="{{ empresa.logo_url or 'images/clm.jpeg' }}" alt="CLM">
+        <img src="{{ empresa.logo_url or 'images/girbau_logo.jpeg' }}" alt="Girbau">
     </div>
     <div class="dots-area">
-        <img src="{{ empresa.logo_decoracion_url or 'images/clm_r.jpeg' }}" alt="" class="header-deco">
+        {% if empresa.logo_decoracion_url %}<img src="{{ empresa.logo_decoracion_url }}" alt="" class="header-deco">{% endif %}
     </div>
 </div>
 
@@ -586,7 +586,7 @@ Para la interpretación y cumplimiento del presente contrato, <strong>LAS PARTES
 
 </div>
 
-<!-- Spacer: empuja el footer al fondo en la página legal -->
+<!-- Spacer: empuja el footer al fondo si el contenido es corto -->
 <div class="spacer"></div>
 
 <div class="bottom-company">

@@ -233,7 +233,7 @@ class CotizacionCreate(BaseModel):
     notas: Optional[str] = None
     moneda: str = Field('MXN', pattern='^(MXN|USD)$')
     tipo_cambio: Optional[float] = None
-    empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'servicios_lavanderia']] = Field(default=['clm'])
+    empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'servicios_lavanderia', 'girbau']] = Field(default=['clm'])
     alcance_servicio: Optional[str] = None
     tiempo_entrega: Optional[str] = Field(None, max_length=50)
     forma_pago: Optional[str] = Field(None, max_length=150)

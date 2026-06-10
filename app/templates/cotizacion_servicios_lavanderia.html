@@ -41,7 +41,7 @@ body {
 
 /* ─── HEADER azul oscuro ────────────────────────────── */
 .top-bar {
-    background: #1e2e54;
+    background: #1e3a7c;
     color: #fff;
     padding: 12px 22px;
     display: table;
@@ -57,16 +57,10 @@ body {
 .top-right { width: 24%; text-align: right; }
 
 .brand-logo {
-    height: 38px;
+    height: 72px;
     width: auto;
     display: inline-block;
     vertical-align: middle;
-}
-.brand-tag {
-    font-size: 8px;
-    color: #cfe4ee;
-    margin-top: 2px;
-    letter-spacing: 0.4px;
 }
 .top-title {
     font-size: 19px;
@@ -89,7 +83,7 @@ body {
 .pedido-box {
     display: inline-block;
     background: #fff;
-    color: #1e2e54;
+    color: #1e3a7c;
     border-radius: 6px;
     padding: 6px 14px;
     text-align: center;
@@ -98,7 +92,7 @@ body {
 .pedido-label {
     font-size: 8px;
     font-weight: 600;
-    color: #1e2e54;
+    color: #1e3a7c;
 }
 .pedido-value {
     font-size: 13px;
@@ -121,7 +115,7 @@ body {
     vertical-align: middle;
 }
 .contact-bar .ico {
-    color: #1e2e54;
+    color: #1e3a7c;
     font-weight: 700;
     margin-right: 4px;
 }
@@ -141,9 +135,11 @@ body {
     border-radius: 6px;
     margin-bottom: 9px;
     overflow: hidden;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 .card-head {
-    background: #1e2e54;
+    background: #1e3a7c;
     color: #fff;
     padding: 5px 12px;
     font-size: 9.5px;
@@ -211,6 +207,8 @@ body {
     border-collapse: separate;
     border-spacing: 6px 0;
     table-layout: fixed;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 .triple-col {
     display: table-cell;
@@ -223,12 +221,12 @@ body {
 .box-titulo {
     font-size: 9px;
     font-weight: 800;
-    color: #1e2e54;
+    color: #1e3a7c;
     margin-bottom: 5px;
     letter-spacing: 0.4px;
 }
 .box-titulo .ico {
-    color: #7fc9a6;
+    color: #ee7e1c;
     margin-right: 4px;
 }
 
@@ -244,7 +242,7 @@ body {
 }
 .alcance-list li::before {
     content: '✓';
-    color: #7fc9a6;
+    color: #ee7e1c;
     font-weight: 700;
     position: absolute;
     left: 0;
@@ -268,7 +266,7 @@ body {
 
 /* Totales: caja azul oscura */
 .totales-box {
-    background: #1e2e54;
+    background: #1e3a7c;
     color: #fff;
     border-radius: 6px;
     padding: 8px 12px;
@@ -301,7 +299,7 @@ body {
 
 /* Caja TOTAL DE INVERSIÓN (azul claro) */
 .inversion-box {
-    background: #7fc9a6;
+    background: #ee7e1c;
     color: #fff;
     border-radius: 6px;
     padding: 8px 12px;
@@ -331,6 +329,8 @@ body {
     margin-top: 9px;
     display: table;
     width: 100%;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 .obs-cell {
     display: table-cell;
@@ -378,7 +378,7 @@ body {
 }
 
 .footer-bar {
-    background: #1e2e54;
+    background: #1e3a7c;
     color: #fff;
     padding: 8px 22px;
     margin-top: 6px;
@@ -416,8 +416,7 @@ body {
 <!-- ═══ TOP BAR ═══ -->
 <div class="top-bar">
     <div class="top-cell top-left">
-        <img class="brand-logo" src="{{ empresa.logo_url or 'images/supliese.jpeg' }}" alt="Supliese">
-        <div class="brand-tag">Servicio para lavanderías</div>
+        <img class="brand-logo" src="{{ empresa.logo_url or 'images/supliese.jpeg' }}" alt="Laundry Solutions">
     </div>
     <div class="top-cell top-center">
         <div class="top-title">COTIZACIÓN</div>
@@ -496,8 +495,8 @@ body {
 </div>
 
 {% if cot.ciudad_entrega %}
-<div style="margin:8px 0 6px;padding:6px 12px;background:#f3f4f6;border-left:3px solid #1e2e54;font-size:9px">
-    <strong style="color:#1e2e54">CIUDAD DE ENTREGA:</strong> {{ cot.ciudad_entrega }}
+<div style="margin:8px 0 6px;padding:6px 12px;background:#f3f4f6;border-left:3px solid #1e3a7c;font-size:9px">
+    <strong style="color:#1e3a7c">CIUDAD DE ENTREGA:</strong> {{ cot.ciudad_entrega }}
 </div>
 {% endif %}
 

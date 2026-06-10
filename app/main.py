@@ -115,6 +115,7 @@ def on_startup():
             ('supliese_gamesail',   'GS',  'Gamesail',               'Gamesail',               'images/supliese_gamesail.jpeg',  'images/gamesail_r.jpeg','cotizacion_supliese_gamesail.html'),
             ('supliese',            'SUP', 'Supliese',               'Supliese',               'images/supliese.jpeg',           'images/supliese_r.jpeg','cotizacion_supliese.html'),
             ('servicios_lavanderia','SDL', 'Servicios de Lavandería','SDL',                    'images/supliese.jpeg',           None,                    'cotizacion_servicios_lavanderia.html'),
+            ('girbau',              'GIR', 'Girbau',                 'Girbau',                 'images/girbau_logo.jpeg',        None,                    'cotizacion_girbau.html'),
         ]
         for codigo, acronimo, nombre, nombre_corto, logo_url, logo_deco, tpl in _empresas_iniciales:
             conn.execute(text("""

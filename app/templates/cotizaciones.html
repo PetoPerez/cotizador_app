@@ -214,6 +214,10 @@
                   <input type="checkbox" id="chk-clm" value="clm" checked onchange="actualizarEmpresas()">
                   <span style="font-size:13px">CLM</span>
                 </label>
+                <label id="lbl-girbau" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="chk-girbau" value="girbau" onchange="actualizarEmpresas()">
+                  <span style="font-size:13px">Girbau</span>
+                </label>
                 <label id="lbl-supliese-gamesail" style="display:flex;align-items:center;gap:8px;cursor:pointer">
                   <input type="checkbox" id="chk-supliese-gamesail" value="supliese_gamesail" onchange="actualizarEmpresas()">
                   <span style="font-size:13px">Gamesail</span>
@@ -596,6 +600,7 @@ function actualizarTipoCambio() {
 function actualizarEmpresas() {
   empresasSeleccionadas = [];
   if (document.getElementById('chk-clm').checked) empresasSeleccionadas.push('clm');
+  if (document.getElementById('chk-girbau').checked) empresasSeleccionadas.push('girbau');
   if (document.getElementById('chk-supliese-gamesail').checked) empresasSeleccionadas.push('supliese_gamesail');
   if (document.getElementById('chk-supliese').checked) empresasSeleccionadas.push('supliese');
   if (document.getElementById('chk-servicios-lavanderia').checked) empresasSeleccionadas.push('servicios_lavanderia');
@@ -608,27 +613,29 @@ function actualizarEmpresas() {
 function configurarEmpresasPorRol() {
   if (user.rol === 'admin') {
     // Admin ve todos los checkboxes
-    ['lbl-clm','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
+    ['lbl-clm','lbl-girbau','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
       .forEach(id => document.getElementById(id).style.display = 'flex');
   } else {
     // Vendedor: solo su empresa, preseleccionada
     const empresa = empresas.find(e => e.id === user.empresa_id);
     const codigoUsuario = empresa ? empresa.codigo : null;
 
-    ['lbl-clm','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
+    ['lbl-clm','lbl-girbau','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
       .forEach(id => document.getElementById(id).style.display = 'none');
 
-    ['chk-clm','chk-supliese-gamesail','chk-supliese','chk-servicios-lavanderia']
+    ['chk-clm','chk-girbau','chk-supliese-gamesail','chk-supliese','chk-servicios-lavanderia']
       .forEach(id => document.getElementById(id).checked = false);
 
     const mapaChk = {
       'clm': 'chk-clm',
+      'girbau': 'chk-girbau',
       'supliese_gamesail': 'chk-supliese-gamesail',
       'supliese': 'chk-supliese',
       'servicios_lavanderia': 'chk-servicios-lavanderia',
     };
     const mapaLbl = {
       'clm': 'lbl-clm',
+      'girbau': 'lbl-girbau',
       'supliese_gamesail': 'lbl-supliese-gamesail',
       'supliese': 'lbl-supliese',
       'servicios_lavanderia': 'lbl-servicios-lavanderia',
