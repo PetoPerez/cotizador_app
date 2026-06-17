@@ -20,7 +20,7 @@ function requireAuth() {
 function requireAdmin() {
   requireAuth();
   const user = getUser();
-  if (user.rol !== 'admin') window.location.href = '/cotizaciones';
+  if (user.rol !== 'admin' && user.rol !== 'superadmin') window.location.href = '/cotizaciones';
 }
 
 async function apiFetch(path, options = {}) {
@@ -112,7 +112,7 @@ function estadoBadge(estado) {
 
 function renderSidebar(active) {
   const user = getUser();
-  const isAdmin = user.rol === 'admin';
+  const isAdmin = user.rol === 'admin' || user.rol === 'superadmin';
   const isSDL   = user.empresa_codigo === 'servicios_lavanderia';
 
   const links = [
@@ -142,12 +142,95 @@ function renderSidebar(active) {
         <div class="sidebar-user">${user.nombre || ''}</div>
         <div class="sidebar-role">${user.rol || ''}</div>
         <button class="btn btn-secondary btn-sm"
-                onclick="logout()"
+                onclick="abrirCambiarPassword()"
                 style="margin-top:12px;width:100%">
+          Cambiar contraseña
+        </button>
+        <button class="btn btn-secondary btn-sm"
+                onclick="logout()"
+                style="margin-top:8px;width:100%">
           Cerrar sesión
         </button>
       </div>
-    </aside>`;
+    </aside>` + renderCambiarPasswordModal();
+}
+
+function renderCambiarPasswordModal() {
+  return `
+    <div class="modal-overlay" id="modal-cambiar-password">
+      <div class="modal" style="max-width:440px">
+        <div class="modal-header">
+          <div class="modal-title">Cambiar mi contraseña</div>
+          <button class="modal-close" onclick="cerrarCambiarPassword()">×</button>
+        </div>
+        <div id="cambiar-password-alert" class="alert hidden"></div>
+        <div class="form-group">
+          <label class="form-label">Contraseña actual *</label>
+          <input type="password" class="form-control" id="cp-actual" autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nueva contraseña *</label>
+          <input type="password" class="form-control" id="cp-nueva" autocomplete="new-password" minlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar nueva contraseña *</label>
+          <input type="password" class="form-control" id="cp-confirm" autocomplete="new-password" minlength="6">
+        </div>
+        <div class="flex gap-8 mt-16" style="justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="cerrarCambiarPassword()">Cancelar</button>
+          <button class="btn btn-primary" id="cp-save" onclick="guardarCambiarPassword()">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function abrirCambiarPassword() {
+  ['cp-actual','cp-nueva','cp-confirm'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('cambiar-password-alert').classList.add('hidden');
+  document.getElementById('modal-cambiar-password').classList.add('open');
+}
+
+function cerrarCambiarPassword() {
+  document.getElementById('modal-cambiar-password').classList.remove('open');
+}
+
+async function guardarCambiarPassword() {
+  const actual = document.getElementById('cp-actual').value;
+  const nueva = document.getElementById('cp-nueva').value;
+  const confirm = document.getElementById('cp-confirm').value;
+  const alertEl = document.getElementById('cambiar-password-alert');
+
+  if (!actual || !nueva || !confirm) {
+    alertEl.textContent = 'Completa todos los campos';
+    alertEl.className = 'alert alert-danger';
+    return;
+  }
+  if (nueva.length < 6) {
+    alertEl.textContent = 'La nueva contraseña debe tener al menos 6 caracteres';
+    alertEl.className = 'alert alert-danger';
+    return;
+  }
+  if (nueva !== confirm) {
+    alertEl.textContent = 'Las contraseñas nuevas no coinciden';
+    alertEl.className = 'alert alert-danger';
+    return;
+  }
+
+  const btn = document.getElementById('cp-save');
+  btn.disabled = true;
+  try {
+    await apiFetch('/usuarios/me/password', {
+      method: 'POST',
+      body: JSON.stringify({ password_actual: actual, password_nuevo: nueva }),
+    });
+    cerrarCambiarPassword();
+    showAlert('Contraseña actualizada correctamente', 'success');
+  } catch (e) {
+    alertEl.textContent = e.message;
+    alertEl.className = 'alert alert-danger';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function logout() {

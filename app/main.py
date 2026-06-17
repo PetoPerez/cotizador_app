@@ -75,9 +75,11 @@ def on_startup():
         conn.execute(text("UPDATE usuarios SET margen_max = 5.00 WHERE margen_max = 10.00"))
         # Renombrar empresa supliese_gomez → servicios_lavanderia
         conn.execute(text("UPDATE cotizaciones SET empresa = 'servicios_lavanderia' WHERE empresa = 'supliese_gomez'"))
-        # Permitir nuevo rol 'servicios' en check constraint
+        # Permitir roles 'servicios' y 'superadmin' en check constraint
         conn.execute(text("ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check"))
-        conn.execute(text("ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'vendedor', 'servicios'))"))
+        conn.execute(text("ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'vendedor', 'servicios', 'superadmin'))"))
+        # Garantizar superadmin único: admin@tuempresa.com
+        conn.execute(text("UPDATE usuarios SET rol = 'superadmin' WHERE email = 'admin@tuempresa.com' AND rol != 'superadmin'"))
 
         # ── Fase 1: Tabla empresas + tabla puente producto_empresa ──
         conn.execute(text("""

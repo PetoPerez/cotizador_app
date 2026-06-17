@@ -114,14 +114,43 @@
   </div>
 </div>
 
+<!-- Modal reset password (solo superadmin) -->
+<div class="modal-overlay" id="modal-reset">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title" id="reset-title">Resetear contraseña</div>
+      <button class="modal-close" onclick="cerrarResetPassword()">×</button>
+    </div>
+    <div id="reset-alert" class="alert hidden"></div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">
+      Vas a establecer una contraseña nueva para <strong id="reset-nombre" style="color:var(--text)"></strong>.
+      El usuario podrá ingresar con ella inmediatamente.
+    </p>
+    <div class="form-group">
+      <label class="form-label">Nueva contraseña *</label>
+      <input type="password" class="form-control" id="reset-nueva" minlength="6">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirmar nueva contraseña *</label>
+      <input type="password" class="form-control" id="reset-confirm" minlength="6">
+    </div>
+    <div class="flex gap-8 mt-16" style="justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="cerrarResetPassword()">Cancelar</button>
+      <button class="btn btn-primary" id="reset-save" onclick="guardarResetPassword()">Resetear</button>
+    </div>
+  </div>
+</div>
+
 <script src="api.js?v=3"></script>
 <script>
 requireAdmin();
 document.getElementById('sidebar-root').innerHTML = renderSidebar('usuarios');
 
+const currentUser = getUser();
 let usuarios = [];
 let empresas = [];
 let editId   = null;
+let resetUserId = null;
 
 async function cargar() {
   try {
@@ -165,10 +194,11 @@ function renderTabla() {
       <td style="font-family:'DM Mono',monospace;font-weight:600">${u.numero_corto ?? '—'}</td>
       <td><strong style="color:var(--text)">${u.nombre}</strong></td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${u.email}</td>
-      <td>${u.rol === 'admin'
-        ? '<span class="badge badge-blue">Admin</span>'
-        : '<span class="badge badge-gray">Vendedor</span>'}</td>
-      <td>${u.rol === 'admin' ? '<span style="color:var(--text3)">—</span>' : `<strong>${nombreEmpresa(u.empresa_id)}</strong>`}</td>
+      <td>${
+        u.rol === 'superadmin' ? '<span class="badge badge-red">Superadmin</span>' :
+        u.rol === 'admin'      ? '<span class="badge badge-blue">Admin</span>' :
+                                 '<span class="badge badge-gray">Vendedor</span>'}</td>
+      <td>${(u.rol === 'admin' || u.rol === 'superadmin') ? '<span style="color:var(--text3)">—</span>' : `<strong>${nombreEmpresa(u.empresa_id)}</strong>`}</td>
       <td style="font-family:'DM Mono',monospace;color:var(--danger)">${u.margen_min}%</td>
       <td style="font-family:'DM Mono',monospace;color:var(--accent2)">+${u.margen_max}%</td>
       <td>${u.activo
@@ -177,6 +207,9 @@ function renderTabla() {
       <td>
         <div class="flex gap-8">
           <button class="btn btn-secondary btn-sm" onclick="editar('${u.id}')">Editar</button>
+          ${currentUser.rol === 'superadmin'
+            ? `<button class="btn btn-secondary btn-sm" onclick="abrirResetPassword('${u.id}','${u.nombre.replace(/'/g, "\\'")}')">Reset password</button>`
+            : ''}
           <button class="btn btn-danger btn-sm" onclick="toggleActivo('${u.id}', ${u.activo})">
             ${u.activo ? 'Desactivar' : 'Activar'}
           </button>
@@ -288,6 +321,54 @@ async function toggleActivo(id, activo) {
     await cargar();
   } catch (e) {
     showAlert(e.message);
+  }
+}
+
+// ─── Reset password (solo superadmin) ─────────────────────
+function abrirResetPassword(id, nombre) {
+  resetUserId = id;
+  document.getElementById('reset-nombre').textContent = nombre;
+  document.getElementById('reset-nueva').value = '';
+  document.getElementById('reset-confirm').value = '';
+  document.getElementById('reset-alert').classList.add('hidden');
+  document.getElementById('modal-reset').classList.add('open');
+}
+
+function cerrarResetPassword() {
+  document.getElementById('modal-reset').classList.remove('open');
+  resetUserId = null;
+}
+
+async function guardarResetPassword() {
+  const nueva = document.getElementById('reset-nueva').value;
+  const confirm = document.getElementById('reset-confirm').value;
+  const alertEl = document.getElementById('reset-alert');
+
+  if (nueva.length < 6) {
+    alertEl.textContent = 'La contraseña debe tener al menos 6 caracteres';
+    alertEl.className = 'alert alert-danger';
+    return;
+  }
+  if (nueva !== confirm) {
+    alertEl.textContent = 'Las contraseñas no coinciden';
+    alertEl.className = 'alert alert-danger';
+    return;
+  }
+
+  const btn = document.getElementById('reset-save');
+  btn.disabled = true;
+  try {
+    await apiFetch(`/usuarios/${resetUserId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password_nuevo: nueva }),
+    });
+    cerrarResetPassword();
+    showAlert('Contraseña restablecida correctamente', 'success');
+  } catch (e) {
+    alertEl.textContent = e.message;
+    alertEl.className = 'alert alert-danger';
+  } finally {
+    btn.disabled = false;
   }
 }
 

@@ -22,6 +22,14 @@ class TokenResponse(BaseModel):
 
 
 # ---------- Usuario ----------
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str = Field(..., min_length=1, max_length=100)
+    password_nuevo: str = Field(..., min_length=6, max_length=100)
+
+class ResetPasswordRequest(BaseModel):
+    password_nuevo: str = Field(..., min_length=6, max_length=100)
+
+
 class UsuarioCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=100)
     email: EmailStr

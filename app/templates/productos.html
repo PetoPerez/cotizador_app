@@ -18,6 +18,9 @@
         <div class="page-subtitle">Catálogo de productos cotizables</div>
       </div>
       <div class="flex gap-8">
+        <button class="btn btn-secondary" onclick="descargarPlantilla()" title="Descarga un Excel vacío con los encabezados">
+          ⬇ Plantilla Excel
+        </button>
         <label class="btn btn-secondary" title="Importar desde Excel (.xlsx)">
           ⬆ Importar Excel
           <input type="file" id="input-excel" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
@@ -425,9 +428,10 @@ async function importarExcel(input) {
     if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
     await cargar();
     const partes = [];
-    if (data.insertados)  partes.push(`${data.insertados} nuevos`);
-    if (data.actualizados) partes.push(`${data.actualizados} actualizados`);
-    if (data.omitidos)    partes.push(`${data.omitidos} omitidos`);
+    if (data.insertados)        partes.push(`${data.insertados} nuevos`);
+    if (data.actualizados)      partes.push(`${data.actualizados} actualizados`);
+    if (data.precios_aplicados) partes.push(`${data.precios_aplicados} precios aplicados`);
+    if (data.omitidos)          partes.push(`${data.omitidos} omitidos`);
     showAlert(`✓ Importación exitosa — ${partes.join(', ')}.`, 'success');
   } catch (e) {
     showAlert(`Error al importar: ${e.message}`);
@@ -435,6 +439,29 @@ async function importarExcel(input) {
     label.childNodes[0].textContent = textoOriginal;
     label.style.opacity = '';
     label.style.pointerEvents = '';
+  }
+}
+
+async function descargarPlantilla() {
+  try {
+    const res = await fetch(`${API_BASE}${API_PATH}/productos/plantilla-importar`, {
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Error ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plantilla_productos.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    showAlert(`Error al descargar plantilla: ${e.message}`);
   }
 }
 

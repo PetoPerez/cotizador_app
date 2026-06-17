@@ -382,7 +382,7 @@ requireAuth();
 document.getElementById('sidebar-root').innerHTML = renderSidebar('cotizaciones');
 
 const user = getUser();
-const isAdmin = user.rol === 'admin';
+const isAdmin = user.rol === 'admin' || user.rol === 'superadmin';
 
 let cotizaciones = [];
 let productos = [];
@@ -611,8 +611,8 @@ function actualizarEmpresas() {
 }
 
 function configurarEmpresasPorRol() {
-  if (user.rol === 'admin') {
-    // Admin ve todos los checkboxes
+  if (user.rol === 'admin' || user.rol === 'superadmin') {
+    // Admin/Superadmin ve todos los checkboxes
     ['lbl-clm','lbl-girbau','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
       .forEach(id => document.getElementById(id).style.display = 'flex');
   } else {

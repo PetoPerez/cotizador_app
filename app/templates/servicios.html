@@ -82,7 +82,7 @@
 requireAuth();
 
 const user = getUser();
-const puedeGestionar = user.rol === 'admin' || user.empresa_codigo === 'servicios_lavanderia';
+const puedeGestionar = user.rol === 'admin' || user.rol === 'superadmin' || user.empresa_codigo === 'servicios_lavanderia';
 if (!puedeGestionar) {
   window.location.href = '/cotizaciones';
 }
