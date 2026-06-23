@@ -42,7 +42,7 @@ def _siguiente_numero(db: Session, empresa: "models.Empresa", vendedor: "models.
 def _cot_options():
     return [
         joinedload(models.Cotizacion.cliente),
-        joinedload(models.Cotizacion.vendedor),
+        joinedload(models.Cotizacion.vendedor_usuario),
         selectinload(models.Cotizacion.items).joinedload(models.CotizacionItem.producto).selectinload(models.Producto.imagenes),
         selectinload(models.Cotizacion.items).joinedload(models.CotizacionItem.servicio),
     ]
@@ -101,6 +101,8 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             numero_cotizacion=_siguiente_numero(db, empresa, current_user),
             cliente_id=data.cliente_id,
             vendedor_id=current_user.id,
+            vendedor_nombre=current_user.nombre,
+            vendedor_telefono=current_user.telefono,
             notas=data.notas,
             vigencia=datetime.now(timezone.utc) + timedelta(days=10),
             moneda=data.moneda,

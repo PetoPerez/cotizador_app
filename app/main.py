@@ -142,6 +142,27 @@ def on_startup():
         conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono VARCHAR(30)"))
         conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS empresa_id UUID REFERENCES empresas(id)"))
 
+        # ── Snapshot de vendedor + permitir eliminar usuarios conservando el nombre ──
+        conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS vendedor_nombre VARCHAR(100)"))
+        conn.execute(text("ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS vendedor_telefono VARCHAR(30)"))
+        # Backfill del snapshot desde el vendedor actual (filas que aún no lo tienen)
+        conn.execute(text("""
+            UPDATE cotizaciones c
+            SET vendedor_nombre = u.nombre,
+                vendedor_telefono = u.telefono
+            FROM usuarios u
+            WHERE c.vendedor_id = u.id AND c.vendedor_nombre IS NULL
+        """))
+        # vendedor_id pasa a ser opcional y la FK a ON DELETE SET NULL,
+        # para que al borrar un usuario sus cotizaciones se conserven.
+        conn.execute(text("ALTER TABLE cotizaciones ALTER COLUMN vendedor_id DROP NOT NULL"))
+        conn.execute(text("ALTER TABLE cotizaciones DROP CONSTRAINT IF EXISTS cotizaciones_vendedor_id_fkey"))
+        conn.execute(text("""
+            ALTER TABLE cotizaciones
+            ADD CONSTRAINT cotizaciones_vendedor_id_fkey
+            FOREIGN KEY (vendedor_id) REFERENCES usuarios(id) ON DELETE SET NULL
+        """))
+
         # Backfill productos → producto_empresa (solo productos que aún no tienen ninguna empresa)
         conn.execute(text("""
             INSERT INTO producto_empresa (producto_id, empresa_id, precio_lista, activo)

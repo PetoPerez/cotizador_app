@@ -247,11 +247,20 @@ class CotizacionCreate(BaseModel):
     forma_pago: Optional[str] = Field(None, max_length=150)
     ciudad_entrega: Optional[str] = Field(None, max_length=150)
 
+class VendedorMiniOut(BaseModel):
+    """Datos del vendedor que se muestran en una cotización. Funciona tanto con
+    un usuario real como con el snapshot histórico de un usuario eliminado."""
+    nombre: str
+    telefono: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 class CotizacionOut(BaseModel):
     id: UUID
     numero_cotizacion: str
     cliente: ClienteOut
-    vendedor: UsuarioOut
+    vendedor: VendedorMiniOut
     estado: str
     notas: Optional[str]
     subtotal: float

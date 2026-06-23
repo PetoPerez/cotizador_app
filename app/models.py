@@ -30,7 +30,7 @@ class Usuario(Base):
     telefono = Column(String(30))
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
-    cotizaciones = relationship("Cotizacion", back_populates="vendedor")
+    cotizaciones = relationship("Cotizacion", back_populates="vendedor_usuario")
     empresa = relationship("Empresa")
 
 
@@ -137,7 +137,13 @@ class Cotizacion(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     numero_cotizacion = Column(String(30), nullable=False, unique=True)
     cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id"), nullable=False)
-    vendedor_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=False)
+    # vendedor_id es nullable: si el usuario se elimina, queda NULL pero se conserva
+    # el nombre/teléfono en las columnas snapshot de abajo (ON DELETE SET NULL).
+    vendedor_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    # Snapshot del vendedor al momento de crear la cotización, para preservar el
+    # nombre en el historial/PDF aunque el usuario sea eliminado.
+    vendedor_nombre = Column(String(100))
+    vendedor_telefono = Column(String(30))
     estado = Column(String(20), nullable=False, default="borrador")
     notas = Column(Text)
     subtotal = Column(Numeric(14, 2), nullable=False, default=0)
@@ -156,9 +162,26 @@ class Cotizacion(Base):
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cliente = relationship("Cliente", back_populates="cotizaciones")
-    vendedor = relationship("Usuario", back_populates="cotizaciones")
+    vendedor_usuario = relationship("Usuario", back_populates="cotizaciones")
     empresa_rel = relationship("Empresa", foreign_keys=[empresa_id])
     items = relationship("CotizacionItem", back_populates="cotizacion", cascade="all, delete-orphan")
+
+    @property
+    def vendedor(self):
+        """Devuelve el usuario vendedor si aún existe; si fue eliminado, un
+        objeto con el nombre/teléfono conservados en el snapshot. Así las
+        plantillas y la API siguen usando `cot.vendedor.nombre` sin cambios."""
+        if self.vendedor_usuario is not None:
+            return self.vendedor_usuario
+        return _VendedorSnapshot(self.vendedor_nombre, self.vendedor_telefono)
+
+
+class _VendedorSnapshot:
+    """Vendedor histórico (usuario ya eliminado). Expone solo lo que usan las
+    plantillas y el esquema de salida: nombre y teléfono."""
+    def __init__(self, nombre, telefono):
+        self.nombre = nombre or "Usuario eliminado"
+        self.telefono = telefono
 
 
 class CotizacionItem(Base):

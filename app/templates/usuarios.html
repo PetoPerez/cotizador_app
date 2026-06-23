@@ -17,7 +17,10 @@
         <div class="page-title">Usuarios</div>
         <div class="page-subtitle">Administra vendedores y sus rangos de precio</div>
       </div>
-      <button class="btn btn-primary" onclick="openModal()">+ Nuevo usuario</button>
+      <div class="flex gap-8">
+        <button class="btn btn-danger" id="btn-purgar" onclick="purgarDesactivados()" style="display:none">Eliminar desactivados</button>
+        <button class="btn btn-primary" onclick="openModal()">+ Nuevo usuario</button>
+      </div>
     </div>
 
     <div id="alert-box" class="alert hidden"></div>
@@ -189,6 +192,8 @@ function renderTabla() {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Sin usuarios</td></tr>`;
     return;
   }
+  const hayDesactivados = usuarios.some(u => !u.activo && u.rol !== 'superadmin');
+  document.getElementById('btn-purgar').style.display = hayDesactivados ? 'inline-flex' : 'none';
   tbody.innerHTML = usuarios.map(u => `
     <tr>
       <td style="font-family:'DM Mono',monospace;font-weight:600">${u.numero_corto ?? '—'}</td>
@@ -213,6 +218,9 @@ function renderTabla() {
           <button class="btn btn-danger btn-sm" onclick="toggleActivo('${u.id}', ${u.activo})">
             ${u.activo ? 'Desactivar' : 'Activar'}
           </button>
+          ${(!u.activo && u.rol !== 'superadmin' && u.id !== currentUser.id)
+            ? `<button class="btn btn-danger btn-sm" onclick="eliminarPermanente('${u.id}','${u.nombre.replace(/'/g, "\\'")}')">Eliminar</button>`
+            : ''}
         </div>
       </td>
     </tr>
@@ -319,6 +327,29 @@ async function toggleActivo(id, activo) {
   try {
     await apiFetch(`/usuarios/${id}`, { method: 'PUT', body: JSON.stringify({ activo: !activo }) });
     await cargar();
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+async function eliminarPermanente(id, nombre) {
+  if (!confirm(`¿Eliminar definitivamente a ${nombre}?\n\nEsta acción no se puede deshacer. Sus cotizaciones se conservan mostrando su nombre.`)) return;
+  try {
+    await apiFetch(`/usuarios/${id}/permanente`, { method: 'DELETE' });
+    await cargar();
+    showAlert('Usuario eliminado definitivamente', 'success');
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+
+async function purgarDesactivados() {
+  const inactivos = usuarios.filter(u => !u.activo && u.rol !== 'superadmin').length;
+  if (!confirm(`¿Eliminar definitivamente ${inactivos} usuario(s) desactivado(s)?\n\nEsta acción no se puede deshacer. Sus cotizaciones se conservan mostrando su nombre.`)) return;
+  try {
+    const r = await apiFetch('/usuarios/purgar-desactivados', { method: 'POST' });
+    await cargar();
+    showAlert(r.detail || 'Usuarios desactivados eliminados', 'success');
   } catch (e) {
     showAlert(e.message);
   }

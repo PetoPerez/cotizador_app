@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import schemas
@@ -121,3 +121,55 @@ def eliminar(id: str, db: Session = Depends(get_db),
     usuario.activo = False
     db.commit()
     return {"detail": "Usuario desactivado"}
+
+
+def _borrar_usuario_definitivo(usuario: models.Usuario, db: Session):
+    """Conserva el nombre del vendedor en sus cotizaciones (snapshot) y luego
+    elimina al usuario. La FK queda en NULL por ON DELETE SET NULL."""
+    db.execute(
+        text("""
+            UPDATE cotizaciones
+            SET vendedor_nombre = :nombre,
+                vendedor_telefono = :telefono,
+                vendedor_id = NULL
+            WHERE vendedor_id = :uid
+        """),
+        {"nombre": usuario.nombre, "telefono": usuario.telefono, "uid": str(usuario.id)},
+    )
+    db.delete(usuario)
+
+
+@router.delete("/{id}/permanente")
+def eliminar_permanente(id: str, db: Session = Depends(get_db),
+                        current_user: models.Usuario = Depends(require_admin)):
+    """Elimina definitivamente un usuario que ya está desactivado.
+    Sus cotizaciones se conservan mostrando el nombre del vendedor."""
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if _es_superadmin(usuario):
+        raise HTTPException(status_code=403, detail="No puedes eliminar al superadmin")
+    if usuario.id == current_user.id:
+        raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo")
+    if usuario.activo:
+        raise HTTPException(status_code=400, detail="Primero desactiva al usuario antes de eliminarlo")
+    nombre = usuario.nombre
+    _borrar_usuario_definitivo(usuario, db)
+    db.commit()
+    return {"detail": f"Usuario {nombre} eliminado definitivamente"}
+
+
+@router.post("/purgar-desactivados")
+def purgar_desactivados(db: Session = Depends(get_db),
+                        current_user: models.Usuario = Depends(require_admin)):
+    """Elimina definitivamente a TODOS los usuarios desactivados.
+    El superadmin y el usuario actual nunca se borran."""
+    usuarios = db.query(models.Usuario).filter(
+        models.Usuario.activo == False,
+        models.Usuario.rol != "superadmin",
+        models.Usuario.id != current_user.id,
+    ).all()
+    for usuario in usuarios:
+        _borrar_usuario_definitivo(usuario, db)
+    db.commit()
+    return {"detail": f"{len(usuarios)} usuario(s) desactivado(s) eliminado(s)", "eliminados": len(usuarios)}
