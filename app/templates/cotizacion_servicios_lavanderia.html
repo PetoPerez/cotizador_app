@@ -4,9 +4,12 @@
 <meta charset="UTF-8">
 <title>Cotización Servicios de Lavandería</title>
 <style>
+/* Márgenes reales de página: se aplican a TODAS las páginas. El margen
+   superior aloja la barra azul fija y el inferior el pie fijo, de modo que
+   el contenido nunca toca los bordes sin importar cuántos renglones haya. */
 @page {
     size: A4;
-    margin: 0;
+    margin: 28mm 0 20mm 0;
 }
 
 * {
@@ -23,24 +26,13 @@ body {
     line-height: 1.35;
 }
 
-.page {
-    position: relative;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto;
-    background: #fff;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-/* El contenido principal crece y empuja el footer al fondo */
-.spacer {
-    flex: 1 1 auto;
-}
-
-/* ─── HEADER azul oscuro ────────────────────────────── */
+/* ─── HEADER azul oscuro (fijo, se repite en cada página) ───────────── */
 .top-bar {
+    position: fixed;
+    top: -28mm;
+    left: 0;
+    right: 0;
+    z-index: 3;
     background: #1e3a7c;
     color: #fff;
     padding: 12px 22px;
@@ -48,6 +40,16 @@ body {
     width: 100%;
     table-layout: fixed;
 }
+
+/* ─── PIE azul (fijo, se repite en cada página) ────────────────────── */
+.running-footer {
+    position: fixed;
+    bottom: -20mm;
+    left: 0;
+    right: 0;
+    z-index: 3;
+}
+.running-footer .footer-bar { margin-top: 0; }
 .top-cell {
     display: table-cell;
     vertical-align: middle;
@@ -411,9 +413,7 @@ body {
 </head>
 <body>
 
-<section class="page">
-
-<!-- ═══ TOP BAR ═══ -->
+<!-- ═══ TOP BAR (fija, se repite en cada página) ═══ -->
 <div class="top-bar">
     <div class="top-cell top-left">
         <img class="brand-logo" src="{{ empresa.logo_url or 'images/supliese.jpeg' }}" alt="Laundry Solutions">
@@ -546,9 +546,6 @@ body {
 
 </div>  {# /.content (parte superior) #}
 
-<!-- Espaciador: empuja el bloque triple y observaciones hacia abajo -->
-<div class="spacer"></div>
-
 <div class="content content-bottom">
 
 <!-- ═══ BLOQUE TRIPLE: ALCANCE + CONDICIONES + TOTALES ═══ -->
@@ -650,23 +647,23 @@ body {
     <img src="images/csf.jpeg"     alt="CMV Sharper Finish">
 </div>
 
-<!-- ═══ FOOTER BAR ═══ -->
-<div class="footer-bar">
-    <span class="izq">
-        <strong>SERVICIO REALIZADO POR TÉCNICOS CERTIFICADOS</strong><br>
-        <small>EN GIRBAU Y ALLIANCE LAUNDRY</small>
-    </span>
-    <span class="der">
-        <strong>EXPERIENCIA, CALIDAD Y RESPALDO</strong><br>
-        <small>EN CADA SERVICIO</small>
-    </span>
-</div>
+<!-- ═══ FOOTER BAR (fijo, se repite en cada página) ═══ -->
+<div class="running-footer">
+    <div class="footer-bar">
+        <span class="izq">
+            <strong>SERVICIO REALIZADO POR TÉCNICOS CERTIFICADOS</strong><br>
+            <small>EN GIRBAU Y ALLIANCE LAUNDRY</small>
+        </span>
+        <span class="der">
+            <strong>EXPERIENCIA, CALIDAD Y RESPALDO</strong><br>
+            <small>EN CADA SERVICIO</small>
+        </span>
+    </div>
 
-<div class="foot-direccion">
-    {{ empresa.direccion }} &nbsp;·&nbsp; Tel. {{ empresa.telefono }}
+    <div class="foot-direccion">
+        {{ empresa.direccion }} &nbsp;·&nbsp; Tel. {{ empresa.telefono }}
+    </div>
 </div>
-
-</section>
 
 </body>
 </html>

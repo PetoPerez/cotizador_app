@@ -5,9 +5,12 @@
 <title>Cotización Girbau</title>
 <style>
 
+/* Márgenes reales de página: se aplican a TODAS las páginas. El margen
+   superior aloja el encabezado fijo y el inferior el pie fijo, de modo que
+   el contenido nunca toca los bordes sin importar cuántos productos haya. */
 @page {
     size: A4;
-    margin: 0;
+    margin: 40mm 0 22mm 0;
 }
 
 * {
@@ -22,74 +25,92 @@ body {
     color: #222;
 }
 
-.page {
+.page-break {
+    page-break-after: always;
+}
+
+/* Salto de página antes del bloque legal */
+.legal-page {
+    page-break-before: always;
+}
+
+/* Contenido en flujo normal: WeasyPrint lo pagina solo, respetando los
+   márgenes de @page en cada página. */
+.content {
     position: relative;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto;
-    background: #fff;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    z-index: 1;
+    padding: 0 12mm;
+    background: transparent;
 }
 
-/* Spacer crece para empujar el footer al fondo si hay espacio sobrante */
-.spacer {
-    flex: 1 1 auto;
-}
-
-.page::before {
-    content: "";
-    position: absolute;
-    top: 0;
+/* ══════════════════════════════════════
+   MARCA DE AGUA (fija, se repite en cada página)
+   ══════════════════════════════════════ */
+.watermark {
+    position: fixed;
+    top: -40mm;
+    bottom: -22mm;
     left: 0;
-    width: 100%;
-    height: 100%;
+    right: 0;
     background-image: url('{{ empresa.logo_url or "images/girbau_logo.jpeg" }}');
     background-position: center center;
     background-repeat: no-repeat;
     background-size: 250px auto;
     opacity: 0.08;
     z-index: 0;
-    pointer-events: none;
-}
-
-.page-break {
-    page-break-after: always;
-}
-
-.content {
-    position: relative;
-    z-index: 1;
-    padding: 9mm 12mm 6mm 12mm;
-    background: transparent;
 }
 
 /* ══════════════════════════════════════
-   LÍNEA ROJA TOP
+   ENCABEZADO FIJO: línea + logo (se repite en cada página)
    ══════════════════════════════════════ */
-.top-line {
-    position: absolute;
-    top: 0;
+.running-header {
+    position: fixed;
+    top: -40mm;
     left: 0;
     right: 0;
-    height: 3px;
-    background: #007788;
-    z-index: 10;
+    height: 40mm;
+    z-index: 3;
+    padding: 0 12mm;
 }
 
-/* ══════════════════════════════════════
-   HEADER: LOGO + DOTS
-   ══════════════════════════════════════ */
+.top-line {
+    height: 3px;
+    background: #007788;
+    margin: 0 -12mm;
+}
+
 .header-block {
-    position: relative;
-    z-index: 3;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
+    padding-top: 7mm;
+    padding-bottom: 8px;
     border-bottom: 3px solid #007788;
+}
+
+/* ══════════════════════════════════════
+   PIE FIJO: datos de la empresa (se repite en cada página)
+   ══════════════════════════════════════ */
+.running-footer {
+    position: fixed;
+    bottom: -16mm;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    padding: 0 12mm;
+}
+
+.running-footer .inner {
+    border-top: 3px solid #007788;
+    padding-top: 6px;
+    text-align: center;
+    font-size: 9px;
+}
+
+.running-footer .name {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 2px;
 }
 
 .logo-clm {
@@ -304,27 +325,6 @@ body {
 }
 
 /* ══════════════════════════════════════
-   FOOTER
-   ══════════════════════════════════════ */
-.bottom-company {
-    position: relative;
-    z-index: 1;
-    margin: 0 12mm 8mm 12mm;
-    text-align: center;
-    font-size: 9px;
-    border-top: 3px solid #007788;
-    padding-top: 6px;
-    page-break-inside: avoid;
-    break-inside: avoid;
-}
-
-.bottom-company .name {
-    font-size: 12px;
-    font-weight: bold;
-    margin-bottom: 2px;
-}
-
-/* ══════════════════════════════════════
    PÁGINA LEGAL
    ══════════════════════════════════════ */
 .legal {
@@ -370,21 +370,29 @@ body {
 </head>
 <body>
 
-<!-- PÁGINA 1 -->
-<section class="page page-break">
+<!-- Marca de agua, encabezado y pie FIJOS: se repiten en cada página -->
+<div class="watermark"></div>
 
-<div class="top-line"></div>
-
-<div class="content">
-
-<div class="header-block">
-    <div class="logo-clm">
-        <img src="{{ empresa.logo_url or 'images/girbau_logo.jpeg' }}" alt="Girbau">
-    </div>
-    <div class="dots-area">
-        {% if empresa.logo_decoracion_url %}<img src="{{ empresa.logo_decoracion_url }}" alt="" class="header-deco">{% endif %}
+<div class="running-header">
+    <div class="top-line"></div>
+    <div class="header-block">
+        <div class="logo-clm">
+            <img src="{{ empresa.logo_url or 'images/girbau_logo.jpeg' }}" alt="Girbau">
+        </div>
+        <div class="dots-area">
+            {% if empresa.logo_decoracion_url %}<img src="{{ empresa.logo_decoracion_url }}" alt="" class="header-deco">{% endif %}
+        </div>
     </div>
 </div>
+
+<div class="running-footer">
+    <div class="inner">
+        <div class="name">{{ cot.vendedor.nombre }}</div>
+        <div>{{ empresa.direccion }} · Tel. {{ empresa.telefono }}</div>
+    </div>
+</div>
+
+<div class="content">
 
 <div class="header-meta">
     <div class="meta-left">
@@ -491,34 +499,8 @@ body {
 </div>
 {% endif %}
 
-</div>
-
-<!-- Spacer: empuja el footer al fondo si el contenido es corto -->
-<div class="spacer"></div>
-
-<div class="bottom-company">
-    <div class="name">{{ cot.vendedor.nombre }}</div>
-    <div>{{ empresa.direccion }} · Tel. {{ empresa.telefono }}</div>
-</div>
-
-</section>
-
-
-<!-- PÁGINA 2: LEGAL -->
-<section class="page">
-
-<div class="top-line"></div>
-
-<div class="content">
-
-<div class="header-block">
-    <div class="logo-clm">
-        <img src="{{ empresa.logo_url or 'images/girbau_logo.jpeg' }}" alt="Girbau">
-    </div>
-    <div class="dots-area">
-        {% if empresa.logo_decoracion_url %}<img src="{{ empresa.logo_decoracion_url }}" alt="" class="header-deco">{% endif %}
-    </div>
-</div>
+<!-- PÁGINA LEGAL (salto de página; encabezado y pie fijos se repiten solos) -->
+<div class="legal-page">
 
 <div class="legal">
 
@@ -584,17 +566,9 @@ Para la interpretación y cumplimiento del presente contrato, <strong>LAS PARTES
     </div>
 </div>
 
-</div>
+</div><!-- /legal-page -->
 
-<!-- Spacer: empuja el footer al fondo si el contenido es corto -->
-<div class="spacer"></div>
-
-<div class="bottom-company">
-    <div class="name">{{ cot.vendedor.nombre }}</div>
-    <div>{{ empresa.direccion }} · Tel. {{ empresa.telefono }}</div>
-</div>
-
-</section>
+</div><!-- /content -->
 
 </body>
 </html>

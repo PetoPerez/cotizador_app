@@ -24,3 +24,9 @@ build/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Script local de actualización de precios (no se sube al repo)
+scripts/actualizar_precios.py
+# Archivos Excel (datos / plantillas locales)
+*.xlsx
+*.xls
