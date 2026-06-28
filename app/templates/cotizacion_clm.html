@@ -248,10 +248,20 @@ body {
     widows: 2;
 }
 
-/* Un producto NO se fuerza como bloque indivisible: si es muy alto, fluye.
-   La tabla (arriba) sí se mantiene unida a sus características. */
+/* Un producto NO se fuerza como bloque indivisible: si es muy alto, fluye. */
 .product-block {
     margin-bottom: 6px;
+}
+
+/* Unidad mínima indivisible: tabla + título + nombre del equipo nunca se
+   separan (evita el encabezado "colgado"). Es corta, siempre cabe; las
+   viñetas y la imagen fluyen después. */
+.prod-keep {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+.carac-head {
+    margin-top: 8px;
 }
 
 .img-producto {
@@ -438,7 +448,11 @@ body {
 {% endif %}
 
 {% for item in cot.items %}
+{% set img = (item.producto.imagenes[0].url if item.producto.imagenes else item.producto.imagen_url) %}
 <div class="product-block">
+
+<!-- Unidad indivisible: tabla + título + nombre del equipo -->
+<div class="prod-keep">
 <table class="products-table">
     <thead>
         <tr>
@@ -458,14 +472,7 @@ body {
     </tbody>
 </table>
 
-<div class="characteristics">
-    {% set img = (item.producto.imagenes[0].url if item.producto.imagenes else item.producto.imagen_url) %}
-    {% if img %}
-    <div class="img-producto">
-        <img src="{{ img }}" alt="{{ item.producto.modelo }}">
-    </div>
-    {% endif %}
-
+<div class="carac-head">
     <span class="carac-titulo">Caracteristicas:</span>
     <span class="carac-equipo">
         {{ item.producto.marca }} {{ item.producto.equipo -}}
@@ -473,6 +480,16 @@ body {
           {{ '. ' + item.producto.descripcion.split('\n')[0].strip().lstrip('*').strip() }}
         {%- endif -%}
     </span>
+</div>
+</div>
+
+<!-- Imagen + viñetas: fluyen (la imagen conserva el ajuste de texto) -->
+<div class="characteristics">
+    {% if img %}
+    <div class="img-producto">
+        <img src="{{ img }}" alt="{{ item.producto.modelo }}">
+    </div>
+    {% endif %}
 
     {% if item.producto.descripcion %}
         {% for linea in item.producto.descripcion.split('\n')[1:] %}

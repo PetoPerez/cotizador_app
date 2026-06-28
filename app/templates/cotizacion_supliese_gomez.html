@@ -148,11 +148,19 @@ body {
    mueve al inicio de la página siguiente.
    ───────────────────────────────────────── */
 /* El producto NO se fuerza como bloque indivisible: si la descripción es muy
-   alta, fluye entre páginas (la tabla sigue pegada a sus características vía
-   break-after/break-before) para no dejar hojas en blanco. */
+   alta, fluye entre páginas para no dejar hojas en blanco. */
 .prod-section {
   margin-bottom: 20px;
 }
+
+/* Unidad mínima indivisible: tabla + título + nombre del equipo nunca se
+   separan (evita el encabezado "colgado"). Es corta, siempre cabe; las
+   viñetas y la imagen fluyen después. */
+.prod-keep {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.char-head { margin-top: 2px; }
 
 /* La tabla de datos nunca se separa de las características */
 .prod-table {
@@ -307,39 +315,45 @@ body {
 
   <!-- ── PRODUCTOS ── -->
   {% for item in cot.items %}
+  {% set img = (item.producto.imagenes[0].url if item.producto.imagenes else item.producto.imagen_url) %}
   <div class="prod-section">
 
-    <table class="prod-table">
-      <thead>
-        <tr>
-          <th>Cantidad</th><th>Clave</th><th>Precio</th><th>Importe</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>{{ item.cantidad }}</td>
-          <td>{{ item.producto.modelo }}</td>
-          <td>${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}</td>
-          <td>${{ "{:,.2f}".format(float(item.importe) * tc) }} {{ moneda }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- Unidad indivisible: tabla + título + nombre del equipo -->
+    <div class="prod-keep">
+      <table class="prod-table">
+        <thead>
+          <tr>
+            <th>Cantidad</th><th>Clave</th><th>Precio</th><th>Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ item.cantidad }}</td>
+            <td>{{ item.producto.modelo }}</td>
+            <td>${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}</td>
+            <td>${{ "{:,.2f}".format(float(item.importe) * tc) }} {{ moneda }}</td>
+          </tr>
+        </tbody>
+      </table>
 
+      <div class="char-head">
+        <span class="char-title">Caracteristicas:</span>
+        <span class="char-equip">
+          {{ item.producto.marca }} {{ item.producto.equipo -}}
+          {%- if item.producto.descripcion -%}
+            {{ '. ' + item.producto.descripcion.split('\n')[0].strip().lstrip('*').strip() }}
+          {%- endif -%}
+        </span>
+      </div>
+    </div>
+
+    <!-- Imagen + viñetas: fluyen (la imagen conserva el ajuste de texto) -->
     <div class="char-wrap">
-      {% set img = (item.producto.imagenes[0].url if item.producto.imagenes else item.producto.imagen_url) %}
       {% if img %}
       <div class="prod-img-float">
         <img src="{{ img }}" alt="{{ item.producto.modelo }}">
       </div>
       {% endif %}
-
-      <span class="char-title">Caracteristicas:</span>
-      <span class="char-equip">
-        {{ item.producto.marca }} {{ item.producto.equipo -}}
-        {%- if item.producto.descripcion -%}
-          {{ '. ' + item.producto.descripcion.split('\n')[0].strip().lstrip('*').strip() }}
-        {%- endif -%}
-      </span>
 
       {% if item.producto.descripcion %}
         {% for linea in item.producto.descripcion.split('\n')[1:] %}
