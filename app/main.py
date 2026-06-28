@@ -182,6 +182,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Permite que el JS lea este header de respuesta (aviso de imágenes fallidas).
+    expose_headers=["X-Image-Warnings"],
 )
 
 @app.middleware("http")

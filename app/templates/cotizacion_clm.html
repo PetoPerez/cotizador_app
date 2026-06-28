@@ -201,6 +201,11 @@ body {
     margin-top: 16px;
     font-size: 10px;
     background: transparent;
+    /* La tabla no se parte y queda pegada a sus características. */
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: avoid;
+    break-after: avoid;
 }
 
 .products-table thead tr {
@@ -234,18 +239,18 @@ body {
 /* ══════════════════════════════════════
    CARACTERÍSTICAS
    ══════════════════════════════════════ */
+/* Las características pueden fluir entre páginas si la descripción es larga,
+   para no dejar hojas en blanco. Las viñetas no se parten a media línea. */
 .characteristics {
     margin-top: 10px;
     font-size: 10px;
-    overflow: hidden;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    orphans: 2;
+    widows: 2;
 }
 
-/* Un producto = tabla + sus características como bloque indivisible */
+/* Un producto NO se fuerza como bloque indivisible: si es muy alto, fluye.
+   La tabla (arriba) sí se mantiene unida a sus características. */
 .product-block {
-    page-break-inside: avoid;
-    break-inside: avoid;
     margin-bottom: 6px;
 }
 
@@ -258,7 +263,8 @@ body {
 
 .img-producto img {
     max-width: 170px;
-    max-height: 155px;
+    max-height: 150px;
+    object-fit: contain;
 }
 
 .carac-titulo {
@@ -288,6 +294,10 @@ body {
 .final-box {
     page-break-inside: avoid;
     break-inside: avoid;
+    /* Evita que el total se vaya solo a la siguiente hoja: arrastra el
+       último producto para que la página quede balanceada. */
+    page-break-before: avoid;
+    break-before: avoid;
     width: 280px;
     margin-left: auto;
     margin-top: 20px;

@@ -216,9 +216,14 @@ def descargar_pdf(id: str, db: Session = Depends(get_db), current_user: models.U
     if not cot:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
 
-    pdf_bytes = generar_pdf(cot)
+    pdf_bytes, img_fallidas = generar_pdf(cot)
+    headers = {"Content-Disposition": f"attachment; filename={cot.numero_cotizacion}.pdf"}
+    if img_fallidas:
+        # El front lee este header para avisar al usuario que el PDF salió con
+        # imágenes faltantes y sugerirle contactar a soporte.
+        headers["X-Image-Warnings"] = str(img_fallidas)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={cot.numero_cotizacion}.pdf"}
+        headers=headers,
     )

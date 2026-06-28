@@ -149,12 +149,11 @@ body {
    Salto de página: si no cabe completo, se
    mueve al inicio de la página siguiente.
    ───────────────────────────────────────── */
+/* El producto NO se fuerza como bloque indivisible: si la descripción es muy
+   alta, fluye entre páginas (la tabla sigue pegada a sus características vía
+   break-after/break-before) para no dejar hojas en blanco. */
 .prod-section {
   margin-bottom: 20px;
-  /* CSS2 legacy */
-  page-break-inside: avoid;
-  /* CSS3 moderno — WeasyPrint 53+ */
-  break-inside: avoid;
 }
 
 /* La tabla de datos nunca se separa de las características */
@@ -195,8 +194,8 @@ body {
   text-align: center;
 }
 .prod-img-float img {
-  max-width: 176px;
-  max-height: 148px;
+  max-width: 170px;
+  max-height: 150px;
   object-fit: contain;
   border: 1px solid #eee;
 }
@@ -214,6 +213,9 @@ body {
 .presup {
   margin-top: 18px; text-align: right;
   page-break-inside: avoid; break-inside: avoid;
+  /* Evita que el total se vaya solo a la siguiente hoja: arrastra el
+     último producto para que la página quede balanceada. */
+  page-break-before: avoid; break-before: avoid;
 }
 .presup-title { color: #05c66e; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
 .presup-table { margin-left: auto; border-collapse: collapse; min-width: 260px; background: transparent; }

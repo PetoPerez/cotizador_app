@@ -211,6 +211,10 @@ body {
     table-layout: fixed;
     page-break-inside: avoid;
     break-inside: avoid;
+    /* Evita que el bloque de totales/condiciones se vaya solo a la siguiente
+       hoja: se mantiene junto a la tabla de productos para quedar balanceado. */
+    page-break-before: avoid;
+    break-before: avoid;
 }
 .triple-col {
     display: table-cell;

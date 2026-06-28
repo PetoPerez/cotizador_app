@@ -1,8 +1,13 @@
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
+from weasyprint import HTML, default_url_fetcher
 import os
 from app.config import settings
 from app.utils.numero_letras import numero_a_letras
+from app.services.exchange_rate_service import get_usd_mxn
+
+# Timeout (segundos) para descargar imágenes remotas al generar el PDF.
+# Evita que una imagen lenta/colgada bloquee al worker indefinidamente.
+_IMG_TIMEOUT = 5
 
 template_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
 env = Environment(loader=FileSystemLoader(template_dir))
@@ -14,7 +19,13 @@ _DIAS  = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo']
 def _fecha_es(dt):
     return f"{_DIAS[dt.weekday()]}, {dt.day} de {_MESES[dt.month-1]} de {dt.year}"
 
-def generar_pdf(cotizacion) -> bytes:
+def generar_pdf(cotizacion):
+    """Genera el PDF de la cotización.
+
+    Devuelve una tupla (pdf_bytes, imagenes_fallidas) donde imagenes_fallidas
+    es el número de imágenes que no se pudieron descargar (por timeout o error).
+    El PDF se genera de todas formas, omitiendo esas imágenes.
+    """
     # Si la cotización tiene empresa_id (nueva arquitectura), leer datos desde BD.
     # Si no (cotización histórica), caer al mapeo por código + config.
     empresa_rel = getattr(cotizacion, 'empresa_rel', None)
@@ -65,13 +76,20 @@ def generar_pdf(cotizacion) -> bytes:
     #   Otras empresas: precios guardados en USD.
     #     - cotización MXN → tc = TC (multiplicar para convertir USD→MXN)
     #     - cotización USD → tc = 1
+    # Respaldo: si se necesita convertir pero la cotización no guardó tipo de
+    # cambio, se usa el tipo de cambio en vivo para no mostrar montos en una
+    # moneda con la etiqueta de otra.
+    def _tc_efectivo():
+        if tc_raw and float(tc_raw) > 0:
+            return float(tc_raw)
+        return get_usd_mxn() or 1.0
+
     if empresa_code == 'servicios_lavanderia':
-        if moneda == 'USD' and tc_raw and float(tc_raw) > 0:
-            tc = 1.0 / float(tc_raw)
-        else:
-            tc = 1.0
+        # Precios guardados en MXN. Solo se convierte si la cotización es USD.
+        tc = (1.0 / _tc_efectivo()) if moneda == 'USD' else 1.0
     else:
-        tc = float(tc_raw) if tc_raw and moneda == 'MXN' else 1.0
+        # Precios guardados en USD. Solo se convierte si la cotización es MXN.
+        tc = _tc_efectivo() if moneda == 'MXN' else 1.0
 
     template = env.get_template(template_name)
     html_str = template.render(
@@ -83,4 +101,18 @@ def generar_pdf(cotizacion) -> bytes:
         float=float,
         numero_a_letras=numero_a_letras,
     )
-    return HTML(string=html_str, base_url=base_url).write_pdf()
+
+    # Fetcher con timeout: si una imagen no responde a tiempo, se registra el
+    # fallo y se omite; el PDF se genera igual sin bloquear al worker.
+    fallidas = []
+
+    def _url_fetcher(url):
+        try:
+            return default_url_fetcher(url, timeout=_IMG_TIMEOUT)
+        except Exception:
+            fallidas.append(url)
+            raise  # WeasyPrint omite la imagen y continúa
+
+    pdf_bytes = HTML(string=html_str, base_url=base_url,
+                     url_fetcher=_url_fetcher).write_pdf()
+    return pdf_bytes, len(fallidas)
