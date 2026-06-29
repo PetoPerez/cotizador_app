@@ -68,10 +68,11 @@ def descargar_plantilla(db: Session = Depends(get_db), _=Depends(require_admin))
     ws = wb.active
     ws.title = "Productos"
 
-    # Encabezados base + una columna por empresa: precio_<acronimo>
-    headers = ["marca", "equipo", "modelo", "descripcion"]
+    # Encabezados base + precio_general + una columna por empresa + precio_servicios
+    headers = ["marca", "equipo", "modelo", "descripcion", "precio_general"]
     for emp in empresas:
         headers.append(f"precio_{emp.acronimo.lower()}")
+    headers.append("precio_servicios")
 
     # Estilo encabezado
     header_font = Font(bold=True, color="FFFFFF")
@@ -85,15 +86,20 @@ def descargar_plantilla(db: Session = Depends(get_db), _=Depends(require_admin))
         cell.alignment = center
         ws.column_dimensions[cell.column_letter].width = 18
 
-    # Fila de ejemplo
-    ejemplo = ["GIRBAU", "Lavadora industrial", "HS-6028", "Capacidad 28kg, motor inverter"]
+    # Fila de ejemplo: producto normal con precio por empresa
+    ejemplo = ["GIRBAU", "Lavadora industrial", "HS-6028", "Capacidad 28kg, motor inverter", ""]
     for emp in empresas:
         ejemplo.append(75000)
+    ejemplo.append("")  # precio_servicios
     for col_idx, val in enumerate(ejemplo, start=1):
         ws.cell(row=2, column=col_idx, value=val)
 
-    # Segunda fila vacía pero formateada con instrucciones
-    ws.cell(row=3, column=1, value="(deja vacíos los precios de las empresas que no apliquen)")
+    # Instrucciones
+    nota = ("Llena solo los precios que apliquen. · precio_general: el producto queda "
+            "disponible para TODAS las empresas a ese precio (si dejas la marca vacía se "
+            "pone 'General'). · precio_servicios: crea el ítem en el catálogo de Servicios "
+            "de Lavandería (usa el modelo como nombre).")
+    ws.cell(row=3, column=1, value=nota)
     ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=len(headers))
     ws.cell(row=3, column=1).font = Font(italic=True, color="808080")
     ws.cell(row=3, column=1).alignment = Alignment(horizontal="left")
@@ -111,6 +117,7 @@ def descargar_plantilla(db: Session = Depends(get_db), _=Depends(require_admin))
 @router.post("/importar")
 def importar_excel(
     file: UploadFile = File(...),
+    marca_general: bool = False,  # confirmación: guardar productos sin marca como 'General'
     db: Session = Depends(get_db),
     _=Depends(require_admin),
 ):
@@ -127,7 +134,7 @@ def importar_excel(
     if not rows:
         raise HTTPException(status_code=400, detail="El archivo está vacío")
 
-    empresas = _empresas_para_import(db)
+    empresas = _empresas_para_import(db)  # CLM, GS, SUP, GIR (sin servicios)
     # Mapeo: "precio_<acronimo>" → empresa
     precio_col_to_empresa = {f"precio_{e.acronimo.lower()}": e for e in empresas}
 
@@ -135,13 +142,19 @@ def importar_excel(
     headers = [str(c).strip().lower() if c is not None else "" for c in rows[0]]
     col_idx = {}                # campo base → índice
     precio_col_idx = {}         # codigo empresa → índice
+    idx_general = None          # columna precio_general (todas las empresas)
+    idx_servicios = None        # columna precio_servicios (catálogo de servicios)
     for i, h in enumerate(headers):
         if h in _COL_BASE:
             col_idx[_COL_BASE[h]] = i
+        elif h == "precio_general":
+            idx_general = i
+        elif h in ("precio_servicios", "precio_sdl"):
+            idx_servicios = i
         elif h in precio_col_to_empresa:
             precio_col_idx[precio_col_to_empresa[h].codigo] = i
 
-    required_base = {"marca", "equipo", "modelo"}
+    required_base = {"equipo", "modelo"}  # marca es opcional (se rellena con 'General')
     missing = required_base - col_idx.keys()
     if missing:
         raise HTTPException(
@@ -149,10 +162,11 @@ def importar_excel(
             detail=f"Columnas requeridas no encontradas: {', '.join(missing)}. "
                    f"Encabezados detectados: {', '.join(h for h in headers if h)}",
         )
-    if not precio_col_idx:
+    if not precio_col_idx and idx_general is None and idx_servicios is None:
         raise HTTPException(
             status_code=400,
-            detail=f"Debes incluir al menos una columna de precio (ej. precio_clm, precio_gir, precio_gs, precio_sup). "
+            detail="Debes incluir al menos una columna de precio "
+                   "(precio_general, precio_clm, precio_gs, precio_sup, precio_gir o precio_servicios). "
                    f"Encabezados detectados: {', '.join(h for h in headers if h)}",
         )
 
@@ -162,6 +176,10 @@ def importar_excel(
     actualizados = 0
     omitidos = 0
     precios_aplicados = 0
+    servicios_creados = 0
+    servicios_actualizados = 0
+    sin_marca = 0   # productos cuya marca venía vacía (se guardan como 'General')
+    detalles = []  # motivos de las filas omitidas
 
     def upsert_precio(producto: models.Producto, empresa: models.Empresa, precio: float):
         """Upsert un único producto_empresa con el precio dado."""
@@ -176,6 +194,17 @@ def importar_excel(
                 precio_lista=precio, activo=True,
             ))
 
+    def upsert_servicio(nombre: str, descripcion, precio: float):
+        """Crea o actualiza un ítem del catálogo de Servicios de Lavandería."""
+        s = db.query(models.Servicio).filter(models.Servicio.nombre == nombre).first()
+        if s:
+            s.precio_unitario = precio
+            s.activo = True
+            return "actualizado"
+        db.add(models.Servicio(nombre=nombre, descripcion=descripcion,
+                               precio_unitario=precio, activo=True))
+        return "creado"
+
     def parsear_precio(raw):
         if raw is None or raw == "":
             return None
@@ -185,64 +214,109 @@ def importar_excel(
         except (ValueError, TypeError):
             return None
 
-    for row in rows[1:]:
-        def get(field):
-            idx = col_idx.get(field)
-            return row[idx] if idx is not None and idx < len(row) else None
+    try:
+        for n, row in enumerate(rows[1:], start=2):
+            def cell(idx):
+                return row[idx] if idx is not None and idx < len(row) else None
 
-        marca  = str(get("marca")  or "").strip()
-        equipo = str(get("equipo") or "").strip()
-        modelo = str(get("modelo") or "").strip()
-        desc   = str(get("descripcion") or "").strip() or None
+            marca_raw = str(cell(col_idx.get("marca")) or "").strip()
+            sin_marca_fila = (marca_raw == "")
+            marca  = marca_raw or "General"
+            equipo = str(cell(col_idx.get("equipo")) or "").strip()
+            modelo = str(cell(col_idx.get("modelo")) or "").strip()
+            desc   = str(cell(col_idx.get("descripcion")) or "").strip() or None
 
-        if not marca or not equipo or not modelo:
-            omitidos += 1
-            continue
+            # Fila en blanco: se ignora en silencio
+            if not equipo and not modelo:
+                continue
+            if not equipo or not modelo:
+                omitidos += 1
+                detalles.append(f"Fila {n}: falta equipo o modelo")
+                continue
 
-        # Precios por empresa en esta fila
-        precios_fila = {}  # codigo empresa → precio
-        for codigo, idx in precio_col_idx.items():
-            raw = row[idx] if idx < len(row) else None
-            p = parsear_precio(raw)
-            if p is not None:
-                precios_fila[codigo] = p
+            # Precio para el catálogo de servicios
+            precio_svc = parsear_precio(cell(idx_servicios)) if idx_servicios is not None else None
 
-        if not precios_fila:
-            # Si la fila no tiene ningún precio válido, se omite
-            omitidos += 1
-            continue
+            # Precios de producto por empresa
+            precios_fila = {}  # codigo empresa → precio
+            if idx_general is not None:
+                pg = parsear_precio(cell(idx_general))
+                if pg is not None:
+                    for e in empresas:  # disponible para TODAS las empresas
+                        precios_fila[e.codigo] = pg
+            for codigo, idx in precio_col_idx.items():
+                p = parsear_precio(cell(idx))
+                if p is not None:
+                    precios_fila[codigo] = p  # un precio por empresa pisa al general
 
-        existente = db.query(models.Producto).filter(
-            models.Producto.marca  == marca,
-            models.Producto.equipo == equipo,
-            models.Producto.modelo == modelo,
-        ).first()
+            if not precios_fila and precio_svc is None:
+                omitidos += 1
+                detalles.append(f"Fila {n} ({modelo or marca}): sin ningún precio válido")
+                continue
 
-        if existente:
-            # No tocar descripcion ni nada más del producto. Solo precios.
-            db.flush()
-            for codigo, precio in precios_fila.items():
-                upsert_precio(existente, empresas_por_codigo[codigo], precio)
-                precios_aplicados += 1
-            actualizados += 1
-        else:
-            nuevo = models.Producto(
-                marca=marca, equipo=equipo, modelo=modelo,
-                descripcion=desc,
-            )
-            db.add(nuevo)
-            db.flush()
-            for codigo, precio in precios_fila.items():
-                upsert_precio(nuevo, empresas_por_codigo[codigo], precio)
-                precios_aplicados += 1
-            insertados += 1
+            # ── Servicio de lavandería ──
+            if precio_svc is not None:
+                if upsert_servicio(modelo, desc, precio_svc) == "creado":
+                    servicios_creados += 1
+                else:
+                    servicios_actualizados += 1
 
-    db.commit()
+            # ── Producto ──
+            if precios_fila:
+                if sin_marca_fila:
+                    sin_marca += 1
+                    detalles.append(f"Fila {n} ({modelo}): sin marca → se guardará como 'General'")
+                existente = db.query(models.Producto).filter(
+                    models.Producto.marca  == marca,
+                    models.Producto.equipo == equipo,
+                    models.Producto.modelo == modelo,
+                ).first()
+                if existente:
+                    db.flush()
+                    for codigo, precio in precios_fila.items():
+                        upsert_precio(existente, empresas_por_codigo[codigo], precio)
+                        precios_aplicados += 1
+                    actualizados += 1
+                else:
+                    nuevo = models.Producto(marca=marca, equipo=equipo, modelo=modelo, descripcion=desc)
+                    db.add(nuevo)
+                    db.flush()
+                    for codigo, precio in precios_fila.items():
+                        upsert_precio(nuevo, empresas_por_codigo[codigo], precio)
+                        precios_aplicados += 1
+                    insertados += 1
+
+        # Si hay productos sin marca y el usuario aún no confirmó, NO se guarda
+        # nada: se devuelve una vista previa para que acepte o cancele.
+        if sin_marca > 0 and not marca_general:
+            db.rollback()
+            return {
+                "requiere_confirmacion": True,
+                "sin_marca": sin_marca,
+                "insertados": insertados,
+                "actualizados": actualizados,
+                "omitidos": omitidos,
+                "precios_aplicados": precios_aplicados,
+                "servicios_creados": servicios_creados,
+                "servicios_actualizados": servicios_actualizados,
+                "detalles": detalles[:50],
+            }
+
+        db.commit()
+    except Exception as ex:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Error procesando el archivo: {ex}")
+
     return {
+        "requiere_confirmacion": False,
+        "sin_marca": sin_marca,
         "insertados": insertados,
         "actualizados": actualizados,
         "omitidos": omitidos,
         "precios_aplicados": precios_aplicados,
+        "servicios_creados": servicios_creados,
+        "servicios_actualizados": servicios_actualizados,
+        "detalles": detalles[:50],
     }
 
 
