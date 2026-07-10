@@ -424,6 +424,19 @@ body {
 }
 .rfc-cell strong { display: block; font-weight: 800; margin-bottom: 1px; }
 
+/* ─── FIRMA DEL ASESOR ───────────────────────────────── */
+.asesor-firma {
+    width: 220px;
+    margin: 22px 0 4px auto;
+    text-align: center;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+.asesor-line { border-top: 1px solid #1e3a7c; margin-bottom: 4px; }
+.asesor-rol { font-size: 8px; color: #6b7280; }
+.asesor-nombre { font-weight: 800; color: #1e3a7c; font-size: 10px; margin-top: 1px; }
+.asesor-tel { font-size: 8px; color: #4b5563; }
+
 /* ─── FOOTER: marcas + leyenda ───────────────────────── */
 .brands-strip {
     margin-top: 12px;
@@ -691,6 +704,14 @@ body {
         <strong>{{ empresa.nombre }}</strong>
         RFC: {{ empresa.rfc or 'SGO210826M44' }}
     </div>
+</div>
+
+<!-- ═══ FIRMA DEL ASESOR (quién genera la cotización) ═══ -->
+<div class="asesor-firma">
+    <div class="asesor-line"></div>
+    <div class="asesor-rol">Asesor Comercial</div>
+    <div class="asesor-nombre">{{ cot.vendedor.nombre }}</div>
+    <div class="asesor-tel">{{ cot.vendedor.telefono or empresa.telefono }}</div>
 </div>
 
 </div>  {# /.content (parte inferior) #}
