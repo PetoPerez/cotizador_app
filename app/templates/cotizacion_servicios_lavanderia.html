@@ -555,11 +555,9 @@ body {
         <tr>
             <td class="col-num">{{ loop.index }}</td>
             {% if item.servicio %}
-                <td class="col-marca">Servicio</td>
-                <td class="col-mod">—</td>
-                <td class="col-desc">
-                    <strong>{{ item.servicio.nombre }}</strong>{% if item.servicio.descripcion %} — {{ item.servicio.descripcion }}{% endif %}
-                </td>
+                <td class="col-marca">Mantenimiento</td>
+                <td class="col-mod">{{ item.servicio.nombre }}</td>
+                <td class="col-desc">{% if item.servicio.descripcion %}{{ item.servicio.descripcion }}{% endif %}</td>
             {% elif item.producto %}
                 <td class="col-marca">{{ item.producto.marca }}</td>
                 <td class="col-mod">{{ item.producto.modelo }}</td>
