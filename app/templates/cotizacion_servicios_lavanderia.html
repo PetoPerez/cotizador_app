@@ -131,6 +131,32 @@ body {
     padding-bottom: 6px;
 }
 
+/* ─── CLIENTE (formato estándar) ────────────────────── */
+.client-block {
+    margin-bottom: 10px;
+    font-size: 9.5px;
+    line-height: 1.6;
+}
+.client-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: #1e3a7c;
+    margin-bottom: 2px;
+}
+.client-contact { color: #4b5563; }
+.greeting {
+    color: #1e3a7c;
+    font-weight: bold;
+    font-size: 10.5px;
+    margin: 10px 0 4px;
+}
+.intro {
+    font-size: 9.5px;
+    line-height: 1.55;
+    text-align: justify;
+    color: #333;
+}
+
 /* Secciones tipo card */
 .card {
     border: 1px solid #d1d5db;
@@ -330,6 +356,46 @@ body {
     line-height: 1.3;
 }
 
+/* ─── DATOS BANCARIOS ────────────────────────────────── */
+.bancos {
+    margin-top: 10px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+.bancos-titulo {
+    background: #1e3a7c;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    padding: 4px 10px;
+    border-radius: 4px 4px 0 0;
+}
+.bancos-titulo .ico { margin-right: 4px; }
+.bancos-tabla {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 6px;
+    table-layout: fixed;
+}
+.bancos-tabla td {
+    width: 50%;
+    vertical-align: top;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-size: 8px;
+    color: #374151;
+    line-height: 1.5;
+}
+.banco-nom {
+    font-weight: 800;
+    color: #1e3a7c;
+    font-size: 8.5px;
+    margin-bottom: 2px;
+}
+.banco-lin span { color: #6b7280; font-weight: 600; }
+
 /* ─── OBSERVACIONES + RFC ────────────────────────────── */
 .obs-row {
     margin-top: 9px;
@@ -424,8 +490,7 @@ body {
     </div>
     <div class="top-cell top-center">
         <div class="top-title">COTIZACIÓN</div>
-        <div class="top-subtitle">SERVICIO DE MANTENIMIENTO PREVENTIVO</div>
-        <div class="top-subtitle2">EQUIPOS DE LAVANDERÍA INDUSTRIAL</div>
+        <div class="top-subtitle2">Servicio Técnico Especializado</div>
     </div>
     <div class="top-cell top-right">
         <div class="pedido-box">
@@ -440,61 +505,16 @@ body {
 
 <div class="content">
 
-<!-- ═══ DATOS DEL CLIENTE ═══ -->
-<div class="card">
-    <div class="card-head"><span class="ico">👤</span>DATOS DEL CLIENTE</div>
-    <div class="card-body">
-        <table>
-            <tr>
-                <td class="lbl">NOMBRE:</td>
-                <td class="val" style="width:32%">{% if cot.cliente.atencion_titulo %}{{ cot.cliente.atencion_titulo }} {% endif %}{{ cot.cliente.atencion_nombre or cot.cliente.nombre_razon_social }}</td>
-                <td class="lbl" style="width:14%">RELACIÓN:</td>
-                <td class="val">{{ cot.cliente.relacion or '' }}</td>
-            </tr>
-            <tr>
-                <td class="lbl">TELÉFONO:</td>
-                <td class="val">{{ cot.cliente.telefono or '' }}</td>
-                <td class="lbl">CARGO QUE OCUPA:</td>
-                <td class="val">{{ cot.cliente.cargo_ocupa or '' }}</td>
-            </tr>
-            <tr>
-                <td class="lbl">DÍAS DE CONTACTO:</td>
-                <td class="val">{{ cot.cliente.dias_contacto or 'Lunes a Viernes' }}</td>
-                <td class="lbl">HORARIO DE CONTACTO:</td>
-                <td class="val">{{ cot.cliente.horario_contacto or '9:00 a 18:00' }}</td>
-            </tr>
-        </table>
+<!-- ═══ CLIENTE (formato estándar, igual que las otras cotizaciones) ═══ -->
+<div class="client-block">
+    <div class="client-name">{{ cot.cliente.nombre_razon_social }}</div>
+    <div class="client-contact">
+        {% if cot.cliente.telefono %}{{ cot.cliente.telefono }}<br>{% endif %}
+        {% if cot.cliente.email %}{{ cot.cliente.email }}{% endif %}
     </div>
-</div>
-
-<!-- ═══ DOMICILIO DE ENTREGA ═══ -->
-<div class="card">
-    <div class="card-head"><span class="ico">📍</span>DOMICILIO DE ENTREGA</div>
-    <div class="card-body">
-        <table>
-            <tr>
-                <td class="lbl">NOMBRE:</td>
-                <td class="val" colspan="3">{{ cot.cliente.nombre_razon_social }}</td>
-            </tr>
-            <tr>
-                <td class="lbl">DIRECCIÓN:</td>
-                <td class="val" style="width:32%">{{ cot.cliente.domicilio_entrega or '' }}</td>
-                <td class="lbl" style="width:14%">ESTADO:</td>
-                <td class="val">{{ cot.cliente.estado or '' }}</td>
-            </tr>
-            <tr>
-                <td class="lbl">CIUDAD:</td>
-                <td class="val">{{ cot.cliente.ciudad or '' }}</td>
-                <td class="lbl">CÓDIGO POSTAL:</td>
-                <td class="val"></td>
-            </tr>
-            <tr>
-                <td class="lbl">COLONIA:</td>
-                <td class="val">---</td>
-                <td class="lbl">TELÉFONO:</td>
-                <td class="val">{{ cot.cliente.telefono or '---' }}</td>
-            </tr>
-        </table>
+    <div class="greeting">{{ cot.cliente.nombre_razon_social }}</div>
+    <div class="intro">
+        En atención a su solicitud, le presento esta cotización de los equipos y productos que nos ha requerido; anexándole, además, fichas técnicas de cada uno de los equipos para que tenga una mayor información de los mismos.
     </div>
 </div>
 
@@ -624,6 +644,41 @@ body {
       </div>
   </div>
 
+</div>
+
+<!-- ═══ DATOS BANCARIOS ═══ -->
+<div class="bancos">
+    <div class="bancos-titulo"><span class="ico">🏦</span>DATOS BANCARIOS</div>
+    <table class="bancos-tabla">
+        <tr>
+            <td>
+                <div class="banco-nom">SCOTIABANK — Peso Mexicano</div>
+                <div class="banco-lin"><span>Nombre de cuenta:</span> Cuenta de Cheques</div>
+                <div class="banco-lin"><span>Clave interbancaria:</span> 04 4320 2560 1141 3998</div>
+                <div class="banco-lin"><span>Número de cuenta:</span> 2 560 114 1399</div>
+            </td>
+            <td>
+                <div class="banco-nom">SCOTIABANK — Dólares</div>
+                <div class="banco-lin"><span>Nombre de cuenta:</span> Cuenta de Cheques</div>
+                <div class="banco-lin"><span>Clave interbancaria:</span> 04 4320 9560 1143 8480</div>
+                <div class="banco-lin"><span>Número de cuenta:</span> 9 560 114 3848</div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div class="banco-nom">BBVA — Peso Mexicano</div>
+                <div class="banco-lin"><span>Nombre de cuenta:</span> Cuenta de Cheques</div>
+                <div class="banco-lin"><span>Clave interbancaria:</span> 012 320 00125428610 1</div>
+                <div class="banco-lin"><span>Número de cuenta:</span> 012 542 8610</div>
+            </td>
+            <td>
+                <div class="banco-nom">BBVA — Dólares</div>
+                <div class="banco-lin"><span>Nombre de cuenta:</span> Cuenta de Cheques</div>
+                <div class="banco-lin"><span>Clave interbancaria:</span> 012 320 00125429854 2</div>
+                <div class="banco-lin"><span>Número de cuenta:</span> 012 542 9854</div>
+            </td>
+        </tr>
+    </table>
 </div>
 
 <!-- ═══ OBSERVACIONES + RFC ═══ -->

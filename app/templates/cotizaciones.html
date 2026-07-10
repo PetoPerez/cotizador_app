@@ -168,6 +168,23 @@
               <label class="form-label">Ciudad de entrega</label>
               <input type="text" class="form-control" id="f-ciudad-entrega" placeholder="Ej: Guadalajara, Jalisco">
             </div>
+
+            <!-- Solo Servicios de Lavandería (una sola opción) -->
+            <div id="tiempo-entrega-group" style="display:none;margin-top:16px">
+              <label class="form-label">Tiempo de Entrega</label>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                  <input type="radio" name="tiempo-entrega" class="chk-tiempo" value="Inmediata"> Inmediata</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                  <input type="radio" name="tiempo-entrega" class="chk-tiempo" value="15 días hábiles"> 15 días hábiles</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                  <input type="radio" name="tiempo-entrega" class="chk-tiempo" value="4 a 6 semanas"> 4 a 6 semanas</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                  <input type="radio" name="tiempo-entrega" class="chk-tiempo" value="6 a 9 semanas"> 6 a 9 semanas</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                  <input type="radio" name="tiempo-entrega" class="chk-tiempo" value="9 a 12 semanas"> 9 a 12 semanas</label>
+              </div>
+            </div>
           </div>
 
           <div class="card">
@@ -604,6 +621,8 @@ function actualizarEmpresas() {
   if (document.getElementById('chk-supliese-gamesail').checked) empresasSeleccionadas.push('supliese_gamesail');
   if (document.getElementById('chk-supliese').checked) empresasSeleccionadas.push('supliese');
   if (document.getElementById('chk-servicios-lavanderia').checked) empresasSeleccionadas.push('servicios_lavanderia');
+  // Opciones de tiempo de entrega: solo para Servicios de Lavandería
+  document.getElementById('tiempo-entrega-group').style.display = esModoServicios() ? 'block' : 'none';
   aplicarPrecioEfectivo();
   actualizarLabelesItems();
   renderItems();
@@ -660,6 +679,7 @@ function resetNueva() {
   document.getElementById('cliente-seleccionado').style.display = 'none';
   document.getElementById('f-notas').value = '';
   document.getElementById('f-ciudad-entrega').value = '';
+  document.querySelectorAll('.chk-tiempo').forEach(c => c.checked = false);
   cargarTipoCambioAPI();
   setMoneda('MXN');
   renderItems();
@@ -989,6 +1009,13 @@ async function generarCotizacion() {
   btn.innerHTML = '<div class="spinner"></div> Generando...';
 
   try {
+    // Tiempo de entrega (una sola opción) — solo aplica a Servicios de Lavandería
+    let tiempoEntrega = null;
+    if (esModoServicios()) {
+      const sel = document.querySelector('.chk-tiempo:checked');
+      if (sel) tiempoEntrega = sel.value;
+    }
+
     const body = {
       cliente_id: clienteId,
       notas: document.getElementById('f-notas').value.trim() || null,
@@ -996,6 +1023,7 @@ async function generarCotizacion() {
       tipo_cambio: tipoCambioEditable,
       empresas: empresasSeleccionadas,
       ciudad_entrega: document.getElementById('f-ciudad-entrega').value.trim() || null,
+      tiempo_entrega: tiempoEntrega,
       items: itemsValidos.map(i => ({
         producto_id: i.productoId || null,
         servicio_id: i.servicioId || null,

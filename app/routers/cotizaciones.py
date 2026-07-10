@@ -48,10 +48,17 @@ def _cot_options():
     ]
 
 
+def _ve_todo(usuario: models.Usuario) -> bool:
+    """Admin y superadmin ven todas las cotizaciones; los demás solo las suyas."""
+    return usuario.rol in ("admin", "superadmin")
+
+
 @router.get("/", response_model=list[schemas.CotizacionOut])
 def listar(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
-    # Todos los roles (admin, vendedor, servicios) ven todas las cotizaciones.
+    # Admin/superadmin ven todo; cada vendedor solo sus propias cotizaciones.
     query = db.query(models.Cotizacion).options(*_cot_options())
+    if not _ve_todo(current_user):
+        query = query.filter(models.Cotizacion.vendedor_id == current_user.id)
     return query.order_by(models.Cotizacion.created_at.desc()).all()
 
 
@@ -61,6 +68,8 @@ def obtener(id: str, db: Session = Depends(get_db), current_user: models.Usuario
              .options(*_cot_options())
              .filter(models.Cotizacion.id == id).first())
     if not cot:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    if not _ve_todo(current_user) and cot.vendedor_id != current_user.id:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
     return cot
 
@@ -214,6 +223,8 @@ def cambiar_estado(id: str, data: schemas.CotizacionEstadoUpdate, db: Session = 
 def descargar_pdf(id: str, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     cot = db.query(models.Cotizacion).filter(models.Cotizacion.id == id).first()
     if not cot:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    if not _ve_todo(current_user) and cot.vendedor_id != current_user.id:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
 
     pdf_bytes, img_fallidas = generar_pdf(cot)
