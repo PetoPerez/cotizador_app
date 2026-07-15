@@ -184,6 +184,30 @@ class _VendedorSnapshot:
         self.telefono = telefono
 
 
+class PrecioHistorial(Base):
+    """Registro append-only de cada cambio de precio (productos por empresa y
+    servicios). Guarda un snapshot legible (`referencia`, `usuario_nombre`) para
+    conservar la trazabilidad aunque el producto, la empresa o el usuario se
+    eliminen o renombren después."""
+    __tablename__ = "precio_historial"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tipo = Column(String(10), nullable=False)  # 'producto' | 'servicio'
+    # Referencias opcionales (ON DELETE SET NULL); el snapshot de abajo preserva
+    # la información aunque estas filas desaparezcan.
+    producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id", ondelete="SET NULL"), nullable=True)
+    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="SET NULL"), nullable=True)
+    servicio_id = Column(UUID(as_uuid=True), ForeignKey("servicios.id", ondelete="SET NULL"), nullable=True)
+    # Snapshot legible: "MARCA / EQUIPO / MODELO — ACRONIMO" o el nombre del servicio.
+    referencia = Column(Text, nullable=False)
+    precio_anterior = Column(Numeric(12, 2), nullable=True)  # NULL cuando es un alta
+    precio_nuevo = Column(Numeric(12, 2), nullable=False)
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    usuario_nombre = Column(String(100))  # snapshot del autor del cambio
+    origen = Column(String(20), nullable=False, default="manual")  # canal del cambio: manual | importacion | script (un alta se reconoce por precio_anterior NULL)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+
+
 class CotizacionItem(Base):
     __tablename__ = "cotizacion_items"
 

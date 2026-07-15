@@ -11,7 +11,7 @@ from app.config import settings
 from app.limiter import limiter
 from app.database import engine, Base
 from app import models  # registra todos los modelos con Base
-from app.routers import auth, usuarios, clientes, productos, cotizaciones, empresas, servicios
+from app.routers import auth, usuarios, clientes, productos, cotizaciones, empresas, servicios, reportes
 
 app = FastAPI(title="Sistema de Cotizaciones", version="1.0.0")
 app.state.limiter = limiter
@@ -173,6 +173,32 @@ def on_startup():
               AND NOT EXISTS (SELECT 1 FROM producto_empresa pe WHERE pe.producto_id = p.id)
         """))
 
+        # ── Historial de cambios de precio (auditoría) ──
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS precio_historial (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                tipo VARCHAR(10) NOT NULL,
+                producto_id UUID REFERENCES productos(id) ON DELETE SET NULL,
+                empresa_id UUID REFERENCES empresas(id) ON DELETE SET NULL,
+                servicio_id UUID REFERENCES servicios(id) ON DELETE SET NULL,
+                referencia TEXT NOT NULL,
+                precio_anterior NUMERIC(12,2),
+                precio_nuevo NUMERIC(12,2) NOT NULL,
+                usuario_id UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+                usuario_nombre VARCHAR(100),
+                origen VARCHAR(20) NOT NULL DEFAULT 'manual',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_precio_historial_created_at "
+            "ON precio_historial (created_at DESC)"
+        ))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_precio_historial_producto "
+            "ON precio_historial (producto_id)"
+        ))
+
         conn.commit()
 
 _origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
@@ -203,6 +229,7 @@ api.include_router(productos.router)
 api.include_router(cotizaciones.router)
 api.include_router(empresas.router)
 api.include_router(servicios.router)
+api.include_router(reportes.router)
 app.include_router(api)
 
 # ── Rutas de páginas HTML ────────────────────────────────────
@@ -238,6 +265,10 @@ def page_servicios():
 @app.get("/usuarios", include_in_schema=False)
 def page_usuarios():
     return _page("usuarios")
+
+@app.get("/reportes", include_in_schema=False)
+def page_reportes():
+    return _page("reportes")
 
 # ── Archivos estáticos (css, js, fuentes, etc.) ──────────────
 static_dir = os.path.join(os.path.dirname(__file__), "static")

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import schemas, models
 from app.security import get_current_user
+from app.services.precio_audit import registrar_cambio_precio
 
 router = APIRouter(prefix="/servicios", tags=["servicios"])
 
@@ -36,6 +37,12 @@ def crear(data: schemas.ServicioCreate, db: Session = Depends(get_db),
         precio_unitario=data.precio_unitario,
     )
     db.add(servicio)
+    db.flush()
+    registrar_cambio_precio(
+        db, tipo="servicio", referencia=servicio.nombre,
+        precio_nuevo=data.precio_unitario, servicio_id=servicio.id,
+        usuario=current_user, origen="manual",
+    )
     db.commit()
     db.refresh(servicio)
     return servicio
@@ -48,8 +55,16 @@ def actualizar(id: str, data: schemas.ServicioUpdate, db: Session = Depends(get_
     servicio = db.query(models.Servicio).filter(models.Servicio.id == id).first()
     if not servicio:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
-    for field, value in data.model_dump(exclude_none=True).items():
+    payload = data.model_dump(exclude_none=True)
+    precio_anterior = servicio.precio_unitario
+    for field, value in payload.items():
         setattr(servicio, field, value)
+    if "precio_unitario" in payload:
+        registrar_cambio_precio(
+            db, tipo="servicio", referencia=servicio.nombre,
+            precio_nuevo=payload["precio_unitario"], precio_anterior=precio_anterior,
+            servicio_id=servicio.id, usuario=current_user, origen="manual",
+        )
     db.commit()
     db.refresh(servicio)
     return servicio

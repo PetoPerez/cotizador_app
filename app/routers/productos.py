@@ -10,6 +10,7 @@ from app import schemas
 from app.security import get_current_user, require_admin
 from app import models
 from app.services.storage_service import upload_image, delete_image, key_from_url
+from app.services.precio_audit import registrar_cambio_precio, ref_producto
 
 router = APIRouter(prefix="/productos", tags=["productos"])
 
@@ -119,7 +120,7 @@ def importar_excel(
     file: UploadFile = File(...),
     marca_general: bool = False,  # confirmación: guardar productos sin marca como 'General'
     db: Session = Depends(get_db),
-    _=Depends(require_admin),
+    current_user: models.Usuario = Depends(require_admin),
 ):
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Solo se aceptan archivos .xlsx o .xls")
@@ -186,23 +187,44 @@ def importar_excel(
         existentes = {str(pe.empresa_id): pe for pe in producto.empresas}
         eid = str(empresa.id)
         if eid in existentes:
+            anterior = existentes[eid].precio_lista
             existentes[eid].precio_lista = precio
             existentes[eid].activo = True
         else:
+            anterior = None
             db.add(models.ProductoEmpresa(
                 producto_id=producto.id, empresa_id=empresa.id,
                 precio_lista=precio, activo=True,
             ))
+        registrar_cambio_precio(
+            db, tipo="producto", referencia=ref_producto(producto, empresa),
+            precio_nuevo=precio, precio_anterior=anterior,
+            producto_id=producto.id, empresa_id=empresa.id,
+            usuario=current_user, origen="importacion",
+        )
 
     def upsert_servicio(nombre: str, descripcion, precio: float):
         """Crea o actualiza un ítem del catálogo de Servicios de Lavandería."""
         s = db.query(models.Servicio).filter(models.Servicio.nombre == nombre).first()
         if s:
+            anterior = s.precio_unitario
             s.precio_unitario = precio
             s.activo = True
+            db.flush()
+            registrar_cambio_precio(
+                db, tipo="servicio", referencia=nombre, precio_nuevo=precio,
+                precio_anterior=anterior, servicio_id=s.id,
+                usuario=current_user, origen="importacion",
+            )
             return "actualizado"
-        db.add(models.Servicio(nombre=nombre, descripcion=descripcion,
-                               precio_unitario=precio, activo=True))
+        nuevo = models.Servicio(nombre=nombre, descripcion=descripcion,
+                                precio_unitario=precio, activo=True)
+        db.add(nuevo)
+        db.flush()
+        registrar_cambio_precio(
+            db, tipo="servicio", referencia=nombre, precio_nuevo=precio,
+            servicio_id=nuevo.id, usuario=current_user, origen="importacion",
+        )
         return "creado"
 
     def parsear_precio(raw):
@@ -321,7 +343,8 @@ def importar_excel(
 
 
 @router.post("/", response_model=schemas.ProductoOut)
-def crear(data: schemas.ProductoCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def crear(data: schemas.ProductoCreate, db: Session = Depends(get_db),
+          current_user: models.Usuario = Depends(require_admin)):
     if not data.empresas:
         raise HTTPException(status_code=400, detail="Debes asignar el producto a al menos una empresa")
 
@@ -332,6 +355,8 @@ def crear(data: schemas.ProductoCreate, db: Session = Depends(get_db), _=Depends
     db.add(producto)
     db.flush()  # asigna id
 
+    empresas_map = {str(e.id): e for e in db.query(models.Empresa)
+                    .filter(models.Empresa.id.in_([pe.empresa_id for pe in data.empresas])).all()}
     for pe in data.empresas:
         db.add(models.ProductoEmpresa(
             producto_id=producto.id,
@@ -339,13 +364,21 @@ def crear(data: schemas.ProductoCreate, db: Session = Depends(get_db), _=Depends
             precio_lista=pe.precio_lista,
             activo=pe.activo,
         ))
+        emp = empresas_map.get(str(pe.empresa_id))
+        if emp:
+            registrar_cambio_precio(
+                db, tipo="producto", referencia=ref_producto(producto, emp),
+                precio_nuevo=pe.precio_lista, producto_id=producto.id,
+                empresa_id=pe.empresa_id, usuario=current_user, origen="manual",
+            )
     db.commit()
     db.refresh(producto)
     return producto
 
 
 @router.put("/{id}", response_model=schemas.ProductoOut)
-def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_db),
+               current_user: models.Usuario = Depends(require_admin)):
     producto = db.query(models.Producto).filter(models.Producto.id == id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
@@ -360,20 +393,32 @@ def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_
         # Reemplazar mapping producto_empresa con lo recibido
         existentes = {str(pe.empresa_id): pe for pe in producto.empresas}
         nuevos_ids = {str(pe["empresa_id"]) for pe in empresas_input}
+        empresas_map = {str(e.id): e for e in db.query(models.Empresa)
+                        .filter(models.Empresa.id.in_([pe["empresa_id"] for pe in empresas_input])).all()}
 
         # actualizar / insertar
         for pe in empresas_input:
             eid = str(pe["empresa_id"])
             if eid in existentes:
+                anterior = existentes[eid].precio_lista
                 existentes[eid].precio_lista = pe["precio_lista"]
                 existentes[eid].activo = pe["activo"]
             else:
+                anterior = None
                 db.add(models.ProductoEmpresa(
                     producto_id=producto.id,
                     empresa_id=pe["empresa_id"],
                     precio_lista=pe["precio_lista"],
                     activo=pe["activo"],
                 ))
+            emp = empresas_map.get(eid)
+            if emp:
+                registrar_cambio_precio(
+                    db, tipo="producto", referencia=ref_producto(producto, emp),
+                    precio_nuevo=pe["precio_lista"], precio_anterior=anterior,
+                    producto_id=producto.id, empresa_id=pe["empresa_id"],
+                    usuario=current_user, origen="manual",
+                )
         # eliminar los que ya no vienen
         for eid, pe in existentes.items():
             if eid not in nuevos_ids:

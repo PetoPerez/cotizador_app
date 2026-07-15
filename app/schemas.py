@@ -281,3 +281,17 @@ class CotizacionOut(BaseModel):
 
 class CotizacionEstadoUpdate(BaseModel):
     estado: str
+
+
+# ---------- Reportes ----------
+class PrecioHistorialOut(BaseModel):
+    id: UUID
+    tipo: str
+    referencia: str
+    precio_anterior: Optional[float] = None
+    precio_nuevo: float
+    usuario_nombre: Optional[str] = None
+    origen: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

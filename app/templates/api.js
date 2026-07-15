@@ -120,6 +120,7 @@ function renderSidebar(active) {
     { key: 'clientes',     label: 'Clientes',     href: '/clientes' },
     { key: 'productos',    label: 'Productos',     href: '/productos',  adminOnly: true },
     { key: 'servicios',    label: 'Servicios',     href: '/servicios',  show: isAdmin || isSDL },
+    { key: 'reportes',     label: 'Reportes',      href: '/reportes',   adminOnly: true },
     { key: 'usuarios',     label: 'Usuarios',      href: '/usuarios',   adminOnly: true },
   ].filter(l => {
     if (l.adminOnly) return isAdmin;
