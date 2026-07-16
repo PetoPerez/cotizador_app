@@ -215,6 +215,10 @@ class CotizacionItem(Base):
     cotizacion_id = Column(UUID(as_uuid=True), ForeignKey("cotizaciones.id", ondelete="CASCADE"), nullable=False)
     producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id"), nullable=True)
     servicio_id = Column(UUID(as_uuid=True), ForeignKey("servicios.id"), nullable=True)
+    # Empresa de cuyo catálogo se tomó el precio del equipo. Solo se llena en
+    # cotizaciones de Servicios de Lavandería, que cotizan equipos de otras
+    # empresas; deja trazabilidad de por qué el precio_lista es el que es.
+    empresa_origen_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="SET NULL"), nullable=True)
     descripcion_libre = Column(Text)
     cantidad = Column(Integer, nullable=False)
     precio_lista = Column(Numeric(12, 2), nullable=False)

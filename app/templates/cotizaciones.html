@@ -190,7 +190,13 @@
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
               <div id="items-titulo" style="font-size:15px;font-weight:600">Productos</div>
-              <button id="items-add-btn" class="btn btn-secondary btn-sm" onclick="agregarItem()">+ Agregar producto</button>
+              <div class="flex gap-8">
+                <!-- Solo en cotizaciones de Servicios de Lavandería: además de
+                     servicios se pueden cotizar equipos de otras empresas. -->
+                <button id="items-add-equipo-btn" class="btn btn-secondary btn-sm"
+                        style="display:none" onclick="agregarItem(false)">+ Agregar equipo</button>
+                <button id="items-add-btn" class="btn btn-secondary btn-sm" onclick="agregarItem()">+ Agregar producto</button>
+              </div>
             </div>
             <div id="items-container">
               <div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">
@@ -456,19 +462,36 @@ function entidadDelItem(item) {
   return null;
 }
 
-function precioListaEntidad(entidad, esServicio) {
+// Empresa de la que se toma el precio de un equipo cotizado desde Servicios de
+// Lavandería (su catálogo no tiene equipos, así que el precio viene de otra).
+function empresaOrigenDelItem(item) {
+  if (!item.empresaOrigenId) return null;
+  return empresas.find(e => e.id === item.empresaOrigenId) || null;
+}
+
+function precioListaItem(item) {
+  const entidad = entidadDelItem(item);
   if (!entidad) return 0;
-  if (esServicio) return parseFloat(entidad.precio_unitario);
+  if (item.esServicio) return parseFloat(entidad.precio_unitario) || 0;
+  // Equipo con empresa de origen: el precio es el de esa empresa, no el de referencia.
+  if (item.empresaOrigenId) {
+    const pe = (entidad.empresas || []).find(x => x.empresa_id === item.empresaOrigenId && x.activo);
+    return pe ? parseFloat(pe.precio_lista) : 0;
+  }
   return parseFloat(entidad.precio_lista) || 0;
 }
 
 function actualizarLabelesItems() {
-  // Actualiza el título del card y el botón
+  // Actualiza el título del card y los botones
   const isSvc = esModoServicios();
   const titulo = document.getElementById('items-titulo');
   const btn = document.getElementById('items-add-btn');
-  if (titulo) titulo.textContent = isSvc ? 'Servicios' : 'Productos';
+  const btnEq = document.getElementById('items-add-equipo-btn');
+  if (titulo) titulo.textContent = isSvc ? 'Servicios y equipos' : 'Productos';
   if (btn)    btn.textContent    = isSvc ? '+ Agregar servicio' : '+ Agregar producto';
+  // El botón de equipos solo aplica a Servicios de Lavandería: su catálogo no
+  // tiene equipos, así que se toman del de otras empresas.
+  if (btnEq)  btnEq.style.display = isSvc ? '' : 'none';
 }
 
 // ─── Inicialización ───────────────────────────────────────
@@ -722,12 +745,16 @@ function limpiarCliente() {
 }
 
 // ─── Items ────────────────────────────────────────────────
-function agregarItem() {
+function agregarItem(esServicio) {
   const user = getUser();
+  // En cotizaciones SDL conviven servicios y equipos, así que el botón dice cuál
+  // agregar; en el resto, el tipo lo determina la empresa seleccionada.
+  const svc = (esServicio === undefined) ? esModoServicios() : esServicio;
   items.push({
     productoId: null,
     servicioId: null,
-    esServicio: esModoServicios(),
+    empresaOrigenId: null,
+    esServicio: svc,
     cantidad: 1,
     ajuste: 0,
     margenMin: user.margen_min ?? -10,
@@ -746,11 +773,15 @@ function renderItems() {
 
   container.innerHTML = items.map((item, i) => {
     const entidad = entidadDelItem(item);
-    const precioLista = precioListaEntidad(entidad, item.esServicio);
+    const precioLista = precioListaItem(item);
     const precioFinal = precioLista * (1 + item.ajuste / 100);
     const importe = precioFinal * item.cantidad;
-    const label = item.esServicio ? 'Servicio' : 'Producto';
+    const label = item.esServicio ? 'Servicio' : (esModoServicios() ? 'Equipo' : 'Producto');
     const placeholder = item.esServicio ? 'Buscar servicio por nombre...' : 'Buscar por marca, equipo o modelo...';
+    // En SDL el precio depende de la empresa de origen: se muestra para que el
+    // vendedor vea de dónde salió el precio.
+    const empOrigen = empresaOrigenDelItem(item);
+    const origenTag = empOrigen ? ` · <span class="badge badge-gray">${empOrigen.acronimo}</span>` : '';
 
     // Renderizar nombre del seleccionado
     const nombreSel = entidad ?
@@ -758,7 +789,7 @@ function renderItems() {
          ? `<div style="font-weight:600;font-size:13px;color:var(--text)">${entidad.nombre}</div>
             <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${formatMXN(precioLista)}</div>`
          : `<div style="font-weight:600;font-size:13px;color:var(--text)">${entidad.marca} · ${entidad.equipo}</div>
-            <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${entidad.modelo} · ${formatMXN(precioLista)}</div>`)
+            <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${entidad.modelo} · ${formatMXN(precioLista)}${origenTag}</div>`)
       : '';
 
     return `
@@ -830,19 +861,34 @@ function buscarProductoItem(i, q) {
   if (!texto) { dd.style.display = 'none'; return; }
 
   const esSvc = items[i].esServicio;
+  const esEquipoSDL = !esSvc && esModoServicios();
+  const coincide = p =>
+    p.marca.toLowerCase().includes(texto) ||
+    p.equipo.toLowerCase().includes(texto) ||
+    p.modelo.toLowerCase().includes(texto) ||
+    (p.descripcion || '').toLowerCase().includes(texto);
+
   let matches;
   if (esSvc) {
     matches = servicios.filter(s =>
       s.nombre.toLowerCase().includes(texto) ||
       (s.descripcion || '').toLowerCase().includes(texto)
     ).slice(0, 10);
+  } else if (esEquipoSDL) {
+    // El precio del equipo depende de la empresa, así que se ofrece una opción
+    // por cada combinación (equipo, empresa) con su precio.
+    matches = [];
+    productos.filter(coincide).forEach(p => {
+      (p.empresas || []).filter(pe => pe.activo).forEach(pe => {
+        const emp = empresas.find(e => e.id === pe.empresa_id);
+        if (emp && emp.codigo !== 'servicios_lavanderia') {
+          matches.push({ producto: p, empresa: emp, precio: parseFloat(pe.precio_lista) });
+        }
+      });
+    });
+    matches = matches.slice(0, 12);
   } else {
-    matches = productosDisponibles().filter(p =>
-      p.marca.toLowerCase().includes(texto) ||
-      p.equipo.toLowerCase().includes(texto) ||
-      p.modelo.toLowerCase().includes(texto) ||
-      (p.descripcion || '').toLowerCase().includes(texto)
-    ).slice(0, 10);
+    matches = productosDisponibles().filter(coincide).slice(0, 10);
   }
 
   if (!matches.length) {
@@ -861,6 +907,20 @@ function buscarProductoItem(i, q) {
         <div style="display:flex;gap:16px;margin-top:3px">
           <span style="font-size:12px;color:var(--text3)">${(s.descripcion || '').substring(0, 60)}</span>
           <span style="font-size:12px;color:var(--accent2);font-weight:600;margin-left:auto">${formatMXN(s.precio_unitario)}</span>
+        </div>
+      </div>
+    `).join('');
+  } else if (esEquipoSDL) {
+    dd.innerHTML = matches.map(m => `
+      <div onclick="seleccionarEquipoSDL(${i}, '${m.producto.id}', '${m.empresa.id}')"
+           style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s"
+           onmouseover="this.style.background='var(--bg2)'"
+           onmouseout="this.style.background=''">
+        <div style="font-weight:600;font-size:13px;color:var(--text)">${m.producto.marca} · ${m.producto.equipo}</div>
+        <div style="display:flex;gap:16px;margin-top:3px;align-items:center">
+          <span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${m.producto.modelo}</span>
+          <span class="badge badge-gray" style="margin-left:auto">${m.empresa.acronimo}</span>
+          <span style="font-size:12px;color:var(--accent2);font-weight:600">${formatMXN(m.precio)}</span>
         </div>
       </div>
     `).join('');
@@ -889,6 +949,17 @@ function seleccionarProductoItem(i, entidadId) {
     items[i].productoId = entidadId;
     items[i].servicioId = null;
   }
+  items[i].empresaOrigenId = null;
+  items[i].ajuste = 0;
+  renderItems();
+}
+
+// Equipo cotizado desde Servicios de Lavandería: se guarda también la empresa
+// de la que se toma el precio.
+function seleccionarEquipoSDL(i, productoId, empresaId) {
+  items[i].productoId = productoId;
+  items[i].servicioId = null;
+  items[i].empresaOrigenId = empresaId;
   items[i].ajuste = 0;
   renderItems();
 }
@@ -896,6 +967,7 @@ function seleccionarProductoItem(i, entidadId) {
 function limpiarProductoItem(i) {
   items[i].productoId = null;
   items[i].servicioId = null;
+  items[i].empresaOrigenId = null;
   renderItems();
 }
 
@@ -908,7 +980,7 @@ function cambiarAjuste(i, val) {
   items[i].ajuste = parseFloat(val);
   const entidad = entidadDelItem(items[i]);
   if (!entidad) return;
-  const precioLista = precioListaEntidad(entidad, items[i].esServicio);
+  const precioLista = precioListaItem(items[i]);
   const precioFinal = precioLista * (1 + items[i].ajuste / 100);
   const importe = precioFinal * items[i].cantidad;
   const row = document.getElementById(`item-row-${i}`);
@@ -928,7 +1000,7 @@ function cambiarPrecioManual(i, val) {
   const entidad = entidadDelItem(items[i]);
   if (!entidad) return;
 
-  const precioLista = precioListaEntidad(entidad, items[i].esServicio);
+  const precioLista = precioListaItem(items[i]);
   let ajuste = ((precio / precioLista) - 1) * 100;
 
   const fuera = ajuste < items[i].margenMin || ajuste > items[i].margenMax;
@@ -958,7 +1030,7 @@ function normalizarPrecio(i) {
   if (!input) return;
   const entidad = entidadDelItem(items[i]);
   if (!entidad) return;
-  const precioFinal = precioListaEntidad(entidad, items[i].esServicio) * (1 + items[i].ajuste / 100);
+  const precioFinal = precioListaItem(items[i]) * (1 + items[i].ajuste / 100);
   input.value = precioFinal.toFixed(2);
   input.style.borderColor = 'var(--border)';
 }
@@ -973,7 +1045,7 @@ function calcularTotales() {
   items.forEach(item => {
     const entidad = entidadDelItem(item);
     if (!entidad) return;
-    const precioFinal = precioListaEntidad(entidad, item.esServicio) * (1 + item.ajuste / 100);
+    const precioFinal = precioListaItem(item) * (1 + item.ajuste / 100);
     subtotal += precioFinal * item.cantidad;
   });
   const iva = subtotal * 0.16;
@@ -1027,6 +1099,7 @@ async function generarCotizacion() {
       items: itemsValidos.map(i => ({
         producto_id: i.productoId || null,
         servicio_id: i.servicioId || null,
+        empresa_origen_id: i.empresaOrigenId || null,
         cantidad: i.cantidad,
         porcentaje_ajuste: i.ajuste,
       })),

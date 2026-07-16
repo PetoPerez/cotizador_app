@@ -219,6 +219,11 @@ class CotizacionItemCreate(BaseModel):
     descripcion_libre: Optional[str] = None
     cantidad: int
     porcentaje_ajuste: float = 0.0
+    # Empresa de cuyo catálogo se toma el precio del equipo. El precio vive en
+    # producto_empresa (uno por empresa), así que al cotizar equipos desde
+    # Servicios de Lavandería —cuyo catálogo no tiene equipos— el vendedor debe
+    # indicar de qué empresa lo toma. Solo se acepta en cotizaciones SDL.
+    empresa_origen_id: Optional[UUID] = None
 
 class CotizacionItemOut(BaseModel):
     id: UUID
@@ -232,6 +237,7 @@ class CotizacionItemOut(BaseModel):
     importe: float
     producto: Optional[ProductoOut] = None
     servicio: Optional[ServicioOut] = None
+    empresa_origen_id: Optional[UUID] = None
 
     model_config = {"from_attributes": True}
 

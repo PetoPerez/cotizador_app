@@ -173,6 +173,14 @@ def on_startup():
               AND NOT EXISTS (SELECT 1 FROM producto_empresa pe WHERE pe.producto_id = p.id)
         """))
 
+        # ── Equipos de otras empresas en cotizaciones de Servicios de Lavandería ──
+        # El precio vive en producto_empresa; esta columna guarda de qué empresa
+        # se tomó, para que el precio_lista del ítem sea trazable.
+        conn.execute(text(
+            "ALTER TABLE cotizacion_items ADD COLUMN IF NOT EXISTS empresa_origen_id "
+            "UUID REFERENCES empresas(id) ON DELETE SET NULL"
+        ))
+
         # ── Historial de cambios de precio (auditoría) ──
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS precio_historial (

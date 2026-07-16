@@ -138,6 +138,7 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             producto = None
             servicio = None
 
+            empresa_origen_id = None
             if item_data.producto_id:
                 producto = db.query(models.Producto).filter(
                     models.Producto.id == item_data.producto_id,
@@ -146,15 +147,36 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 if not producto:
                     raise HTTPException(status_code=404, detail=f"Producto {item_data.producto_id} no encontrado")
 
+                # El precio del equipo vive en producto_empresa (uno por empresa).
+                # Normalmente se toma de la empresa de la cotización; en Servicios
+                # de Lavandería —cuyo catálogo no tiene equipos— el vendedor elige
+                # de qué empresa lo toma y se usa ese precio.
+                empresa_precio = empresa
+                if item_data.empresa_origen_id is not None:
+                    if empresa.codigo != 'servicios_lavanderia':
+                        # Sin esta guarda, cualquier vendedor podría escoger el
+                        # precio más conveniente de otra empresa.
+                        raise HTTPException(
+                            status_code=400,
+                            detail="La empresa de origen solo aplica a cotizaciones de Servicios de Lavandería"
+                        )
+                    empresa_precio = db.query(models.Empresa).filter(
+                        models.Empresa.id == item_data.empresa_origen_id,
+                        models.Empresa.activa == True,
+                    ).first()
+                    if not empresa_precio:
+                        raise HTTPException(status_code=400, detail="Empresa de origen no encontrada")
+                    empresa_origen_id = empresa_precio.id
+
                 pe = db.query(models.ProductoEmpresa).filter(
                     models.ProductoEmpresa.producto_id == producto.id,
-                    models.ProductoEmpresa.empresa_id == empresa.id,
+                    models.ProductoEmpresa.empresa_id == empresa_precio.id,
                     models.ProductoEmpresa.activo == True,
                 ).first()
                 if not pe:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"El producto {producto.modelo} no está disponible en la empresa {empresa.nombre}"
+                        detail=f"El producto {producto.modelo} no está disponible en la empresa {empresa_precio.nombre}"
                     )
                 precio_lista_emp = float(pe.precio_lista)
             else:
@@ -184,6 +206,7 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 cotizacion_id=cotizacion.id,
                 producto_id=item_data.producto_id,
                 servicio_id=item_data.servicio_id,
+                empresa_origen_id=empresa_origen_id,
                 descripcion_libre=item_data.descripcion_libre,
                 cantidad=item_data.cantidad,
                 precio_lista=precio_lista_emp,
