@@ -7,8 +7,10 @@
 @page {
   size: A4;
   /* top: encabezado fijo (~65px) + espacio de respiro (~45px) = 110px
-     bottom: footer fijo (~40px) + holgura */
-  margin: 110px 0 54px 0;
+     bottom: footer fijo (69px) + holgura = 78px.
+     Debe ser >= la altura del footer: el footer se ancla con bottom:-78px
+     (ver .page-footer) para vivir en el margen y no tapar el contenido. */
+  margin: 110px 0 78px 0;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,7 +62,10 @@ body {
    ───────────────────────────────────────── */
 .page-footer {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  /* negativo del @page margin-bottom: ubica el footer en el área de margen.
+     Con bottom:0 se anclaría al fondo del área de CONTENIDO y, al ser opaco
+     (background:#fff, z-index:100), taparía las últimas filas —p. ej. el Total. */
+  bottom: -78px; left: 0; right: 0;
   z-index: 100;
   border-top: 4px solid #00CCA3;
   background: #fff;
