@@ -584,9 +584,15 @@ body {
 <div class="content content-bottom">
 
 <!-- ═══ BLOQUE TRIPLE: ALCANCE + CONDICIONES + TOTALES ═══ -->
+{# Una cotización SDL puede llevar servicios, equipos o ambos. El alcance aplica
+   a los servicios y el tiempo de entrega a los equipos, así que cada bloque se
+   muestra solo cuando corresponde. #}
+{% set tiene_servicios = (cot.items | selectattr('servicio') | list | length) > 0 %}
+{% set tiene_productos = (cot.items | selectattr('producto') | list | length) > 0 %}
 <div class="triple">
 
-  <!-- ALCANCE DEL SERVICIO -->
+  <!-- ALCANCE DEL SERVICIO — solo si la cotización incluye servicios -->
+  {% if tiene_servicios %}
   <div class="triple-col col-alcance">
       <div class="box-titulo"><span class="ico">✓</span>ALCANCE DEL SERVICIO</div>
       <ul class="alcance-list">
@@ -606,19 +612,25 @@ body {
           {% endif %}
       </ul>
   </div>
+  {% endif %}
 
-  <!-- CONDICIONES COMERCIALES -->
-  <div class="triple-col col-condic">
+  <!-- CONDICIONES COMERCIALES.
+       Sin alcance (cotización solo de equipos) las dos columnas restantes se
+       ensanchan para llenar la fila. -->
+  <div class="triple-col col-condic"{% if not tiene_servicios %} style="width:42%"{% endif %}>
       <div class="box-titulo">CONDICIONES COMERCIALES</div>
       <table class="condic-table">
           <tr>
               <td class="lbl">VIGENCIA DE LA COTIZACIÓN</td>
               <td>15 días</td>
           </tr>
+          {% if tiene_productos %}
           <tr>
-              <td class="lbl">TIEMPO DE ENTREGA</td>
+              {# En cotización combinada se aclara que el tiempo de entrega es de los equipos. #}
+              <td class="lbl">TIEMPO DE ENTREGA{% if tiene_servicios %} (EQUIPOS){% endif %}</td>
               <td>{{ cot.tiempo_entrega or '6 a 8 semanas' }}</td>
           </tr>
+          {% endif %}
           <tr>
               <td class="lbl">MONEDA</td>
               <td>{% if moneda == 'MXN' %}Peso Mexicano (MXN){% else %}Dólar ({{ moneda }}){% endif %}</td>
@@ -631,7 +643,7 @@ body {
   </div>
 
   <!-- TOTALES -->
-  <div class="triple-col col-totales">
+  <div class="triple-col col-totales"{% if not tiene_servicios %} style="width:58%"{% endif %}>
       <div class="totales-box">
           <table>
               <tr>

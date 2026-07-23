@@ -472,13 +472,17 @@ function empresaOrigenDelItem(item) {
 function precioListaItem(item) {
   const entidad = entidadDelItem(item);
   if (!entidad) return 0;
-  if (item.esServicio) return parseFloat(entidad.precio_unitario) || 0;
-  // Equipo con empresa de origen: el precio es el de esa empresa, no el de referencia.
+  if (item.esServicio) return parseFloat(entidad.precio_unitario) || 0;  // MXN
+  // Equipo con empresa de origen (cotización SDL): el precio es el de esa
+  // empresa (guardado en USD). Se normaliza a MXN —base de las cotizaciones
+  // SDL— para que el total mezcle bien servicios (MXN) y equipos, igual que
+  // hace el backend al guardar. Usa el mismo tc que calcularTotales (tcReal).
   if (item.empresaOrigenId) {
     const pe = (entidad.empresas || []).find(x => x.empresa_id === item.empresaOrigenId && x.activo);
-    return pe ? parseFloat(pe.precio_lista) : 0;
+    const usd = pe ? parseFloat(pe.precio_lista) : 0;
+    return usd * (getTipoCambio() || 1);
   }
-  return parseFloat(entidad.precio_lista) || 0;
+  return parseFloat(entidad.precio_lista) || 0;  // USD (cotización de otra empresa)
 }
 
 function actualizarLabelesItems() {
@@ -882,7 +886,10 @@ function buscarProductoItem(i, q) {
       (p.empresas || []).filter(pe => pe.activo).forEach(pe => {
         const emp = empresas.find(e => e.id === pe.empresa_id);
         if (emp && emp.codigo !== 'servicios_lavanderia') {
-          matches.push({ producto: p, empresa: emp, precio: parseFloat(pe.precio_lista) });
+          // precio_lista está en USD; se muestra su equivalente en MXN, que es
+          // la moneda en que quedará la cotización SDL.
+          const precioMXN = parseFloat(pe.precio_lista) * (getTipoCambio() || 1);
+          matches.push({ producto: p, empresa: emp, precio: precioMXN });
         }
       });
     });

@@ -111,10 +111,10 @@ def setup():
     return ids
 
 
-def crear(headers, empresas, items):
+def crear(headers, empresas, items, moneda="MXN", tc=1):
     return client.post("/api/cotizaciones/", headers=headers, json={
-        "cliente_id": IDS["cli"], "empresas": empresas, "moneda": "MXN",
-        "tipo_cambio": 1, "items": items,
+        "cliente_id": IDS["cli"], "empresas": empresas, "moneda": moneda,
+        "tipo_cambio": tc, "items": items,
     })
 
 
@@ -173,10 +173,37 @@ check("Equipo en SDL sin empresa origen -> 400 con mensaje claro",
 if r.status_code == 400:
     print("     mensaje:", r.json().get("detail"))
 
-# 6) El vendedor CLM sigue cotizando normal
-r = crear(h_clm, ["clm"], [{"producto_id": IDS["prod"], "cantidad": 1, "porcentaje_ajuste": 0}])
+# 6) El vendedor CLM sigue cotizando normal (precio USD sin convertir)
+r = crear(h_clm, ["clm"], [{"producto_id": IDS["prod"], "cantidad": 1, "porcentaje_ajuste": 0}],
+          tc=18)
 ok = r.status_code == 200 and r.json()[0]["items"][0]["precio_lista"] == 75000.0
-check("Regresión: vendedor CLM cotiza normal -> 75,000", ok, f"{r.status_code} {r.text[:180]}")
+check("Regresión: cotización CLM guarda el equipo en USD (75,000, sin convertir)", ok,
+      f"{r.status_code} {r.text[:180]}")
+
+# 7) MONEDA: equipo en cotización SDL se normaliza USD->MXN (el bug reportado).
+#    Equipo $75,000 USD con tc=18 debe guardarse como 1,350,000 MXN, no 75,000.
+r = crear(h_sdl, ["servicios_lavanderia"], [
+    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["clm"], "cantidad": 1,
+     "porcentaje_ajuste": 0}], tc=18)
+precio = r.json()[0]["items"][0]["precio_lista"] if r.status_code == 200 else None
+check("SDL: equipo USD 75,000 con tc=18 se guarda en MXN (1,350,000)",
+      precio == 75000.0 * 18, f"got {precio}")
+
+# 8) Y un servicio (ya en MXN) NO se convierte: 500 sigue siendo 500.
+r = crear(h_sdl, ["servicios_lavanderia"], [
+    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["clm"], "cantidad": 1,
+     "porcentaje_ajuste": 0},
+    {"servicio_id": IDS["svc"], "cantidad": 1, "porcentaje_ajuste": 0}], tc=18)
+if r.status_code == 200:
+    its = {("svc" if i["servicio_id"] else "eq"): i for i in r.json()[0]["items"]}
+    check("SDL mixto: servicio queda en MXN (500) y equipo convertido (1,350,000)",
+          its["svc"]["precio_lista"] == 500.0 and its["eq"]["precio_lista"] == 75000.0 * 18,
+          str({k: v["precio_lista"] for k, v in its.items()}))
+    # subtotal = 500 + 1,350,000
+    check("  subtotal mixto = 1,350,500",
+          r.json()[0]["subtotal"] == 500 + 75000.0 * 18, str(r.json()[0]["subtotal"]))
+else:
+    check("SDL mixto con tc=18", False, r.text[:180])
 
 print()
 sys.exit(1 if fallos else 0)

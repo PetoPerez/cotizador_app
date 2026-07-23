@@ -179,6 +179,13 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                         detail=f"El producto {producto.modelo} no está disponible en la empresa {empresa_precio.nombre}"
                     )
                 precio_lista_emp = float(pe.precio_lista)
+                # Los precios de producto_empresa están en USD. Una cotización de
+                # Servicios de Lavandería trabaja en MXN (sus servicios están en
+                # MXN), así que el equipo se normaliza a MXN para que servicios y
+                # equipos convivan en la misma moneda; de lo contrario el PDF
+                # mostraría el número en USD con etiqueta MXN (subvaluado).
+                if empresa.codigo == 'servicios_lavanderia' and tc:
+                    precio_lista_emp *= float(tc)
             else:
                 servicio = db.query(models.Servicio).filter(
                     models.Servicio.id == item_data.servicio_id,
