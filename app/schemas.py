@@ -245,7 +245,7 @@ class CotizacionCreate(BaseModel):
     cliente_id: UUID
     items: List[CotizacionItemCreate]
     notas: Optional[str] = None
-    moneda: str = Field('MXN', pattern='^(MXN|USD)$')
+    moneda: str = Field('USD', pattern='^(MXN|USD)$')  # por default las cotizaciones se muestran en dólares
     tipo_cambio: Optional[float] = None
     empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'servicios_lavanderia', 'girbau']] = Field(default=['clm'])
     alcance_servicio: Optional[str] = None

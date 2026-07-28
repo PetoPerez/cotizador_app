@@ -130,33 +130,39 @@ def check(nombre, cond, detalle=""):
         fallos.append(nombre)
 
 
-# 1) SDL cotiza equipo con precio de CLM
-r = crear(h_sdl, ["servicios_lavanderia"], [
-    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["clm"], "cantidad": 1,
-     "porcentaje_ajuste": 0}])
-ok = r.status_code == 200 and r.json()[0]["items"][0]["precio_lista"] == 75000.0
-check("SDL cotiza equipo de CLM -> precio 75,000", ok, f"{r.status_code} {r.text[:180]}")
-if r.status_code == 200:
-    check("  numeración con acrónimo SDL", "-SDL-" in r.json()[0]["numero_cotizacion"],
-          r.json()[0]["numero_cotizacion"])
-    check("  guarda empresa_origen_id", r.json()[0]["items"][0]["empresa_origen_id"] == IDS["clm"])
+# Supliese = 80,000 USD ; CLM = 75,000 USD (mismo equipo, distinto precio)
+SUP_USD = 80000.0
 
-# 2) Mismo equipo, precio de Supliese
+# 1) SDL cotiza equipo desde Supliese (única empresa origen permitida)
 r = crear(h_sdl, ["servicios_lavanderia"], [
     {"producto_id": IDS["prod"], "empresa_origen_id": IDS["sup"], "cantidad": 1,
      "porcentaje_ajuste": 0}])
-ok = r.status_code == 200 and r.json()[0]["items"][0]["precio_lista"] == 80000.0
-check("SDL cotiza mismo equipo desde Supliese -> precio 80,000", ok, f"{r.status_code} {r.text[:180]}")
+ok = r.status_code == 200 and r.json()[0]["items"][0]["precio_lista"] == SUP_USD
+check("SDL cotiza equipo desde Supliese -> precio 80,000", ok, f"{r.status_code} {r.text[:180]}")
+if r.status_code == 200:
+    check("  numeración con acrónimo SDL", "-SDL-" in r.json()[0]["numero_cotizacion"],
+          r.json()[0]["numero_cotizacion"])
+    check("  guarda empresa_origen_id (Supliese)",
+          r.json()[0]["items"][0]["empresa_origen_id"] == IDS["sup"])
 
-# 3) Mezclar servicio + equipo
+# 2) Equipo desde otra empresa (CLM) en SDL -> rechazado (solo Supliese)
+r = crear(h_sdl, ["servicios_lavanderia"], [
+    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["clm"], "cantidad": 1,
+     "porcentaje_ajuste": 0}])
+check("SDL: equipo desde CLM -> 400 (solo Supliese)", r.status_code == 400,
+      f"{r.status_code} {r.text[:180]}")
+if r.status_code == 400:
+    print("     mensaje:", r.json().get("detail"))
+
+# 3) Mezclar servicio + equipo (Supliese)
 r = crear(h_sdl, ["servicios_lavanderia"], [
     {"servicio_id": IDS["svc"], "cantidad": 2, "porcentaje_ajuste": 0},
-    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["clm"], "cantidad": 1,
+    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["sup"], "cantidad": 1,
      "porcentaje_ajuste": 0}])
 ok = r.status_code == 200 and len(r.json()[0]["items"]) == 2
 sub = r.json()[0]["subtotal"] if r.status_code == 200 else None
 check("SDL mezcla servicio + equipo en una cotización", ok, f"{r.status_code} {r.text[:180]}")
-check("  subtotal = 2x500 + 75,000 = 76,000", sub == 76000.0, str(sub))
+check("  subtotal = 2x500 + 80,000 = 81,000", sub == 81000.0, str(sub))
 
 # 4) Vendedor NO-SDL no puede escoger empresa de origen (guarda de seguridad)
 r = crear(h_clm, ["clm"], [
@@ -170,8 +176,6 @@ r = crear(h_sdl, ["servicios_lavanderia"], [
     {"producto_id": IDS["prod"], "cantidad": 1, "porcentaje_ajuste": 0}])
 check("Equipo en SDL sin empresa origen -> 400 con mensaje claro",
       r.status_code == 400, f"{r.status_code} {r.text[:180]}")
-if r.status_code == 400:
-    print("     mensaje:", r.json().get("detail"))
 
 # 6) El vendedor CLM sigue cotizando normal (precio USD sin convertir)
 r = crear(h_clm, ["clm"], [{"producto_id": IDS["prod"], "cantidad": 1, "porcentaje_ajuste": 0}],
@@ -180,30 +184,37 @@ ok = r.status_code == 200 and r.json()[0]["items"][0]["precio_lista"] == 75000.0
 check("Regresión: cotización CLM guarda el equipo en USD (75,000, sin convertir)", ok,
       f"{r.status_code} {r.text[:180]}")
 
-# 7) MONEDA: equipo en cotización SDL se normaliza USD->MXN (el bug reportado).
-#    Equipo $75,000 USD con tc=18 debe guardarse como 1,350,000 MXN, no 75,000.
+# 7) MONEDA: equipo Supliese (USD) en cotización SDL se normaliza USD->MXN.
+#    80,000 USD con tc=18 debe guardarse como 1,440,000 MXN.
 r = crear(h_sdl, ["servicios_lavanderia"], [
-    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["clm"], "cantidad": 1,
+    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["sup"], "cantidad": 1,
      "porcentaje_ajuste": 0}], tc=18)
 precio = r.json()[0]["items"][0]["precio_lista"] if r.status_code == 200 else None
-check("SDL: equipo USD 75,000 con tc=18 se guarda en MXN (1,350,000)",
-      precio == 75000.0 * 18, f"got {precio}")
+check("SDL: equipo USD 80,000 con tc=18 se guarda en MXN (1,440,000)",
+      precio == SUP_USD * 18, f"got {precio}")
 
-# 8) Y un servicio (ya en MXN) NO se convierte: 500 sigue siendo 500.
+# 8) Servicio (ya en MXN) NO se convierte; equipo sí.
 r = crear(h_sdl, ["servicios_lavanderia"], [
-    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["clm"], "cantidad": 1,
+    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["sup"], "cantidad": 1,
      "porcentaje_ajuste": 0},
     {"servicio_id": IDS["svc"], "cantidad": 1, "porcentaje_ajuste": 0}], tc=18)
 if r.status_code == 200:
     its = {("svc" if i["servicio_id"] else "eq"): i for i in r.json()[0]["items"]}
-    check("SDL mixto: servicio queda en MXN (500) y equipo convertido (1,350,000)",
-          its["svc"]["precio_lista"] == 500.0 and its["eq"]["precio_lista"] == 75000.0 * 18,
+    check("SDL mixto: servicio en MXN (500) y equipo convertido (1,440,000)",
+          its["svc"]["precio_lista"] == 500.0 and its["eq"]["precio_lista"] == SUP_USD * 18,
           str({k: v["precio_lista"] for k, v in its.items()}))
-    # subtotal = 500 + 1,350,000
-    check("  subtotal mixto = 1,350,500",
-          r.json()[0]["subtotal"] == 500 + 75000.0 * 18, str(r.json()[0]["subtotal"]))
+    check("  subtotal mixto = 1,440,500",
+          r.json()[0]["subtotal"] == 500 + SUP_USD * 18, str(r.json()[0]["subtotal"]))
 else:
     check("SDL mixto con tc=18", False, r.text[:180])
+
+# 9) MONEDA DEFAULT: una cotización sin campo 'moneda' se guarda en USD.
+r = client.post("/api/cotizaciones/", headers=h_clm, json={
+    "cliente_id": IDS["cli"], "empresas": ["clm"], "tipo_cambio": 18,
+    "items": [{"producto_id": IDS["prod"], "cantidad": 1, "porcentaje_ajuste": 0}]})
+check("Default: cotización sin 'moneda' se guarda en USD",
+      r.status_code == 200 and r.json()[0]["moneda"] == "USD",
+      f"{r.status_code} {r.text[:120]}")
 
 print()
 sys.exit(1 if fallos else 0)

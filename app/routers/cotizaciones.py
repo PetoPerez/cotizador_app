@@ -166,6 +166,13 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                     ).first()
                     if not empresa_precio:
                         raise HTTPException(status_code=400, detail="Empresa de origen no encontrada")
+                    # Los equipos ofertados desde Servicios de Lavandería solo
+                    # pueden provenir del catálogo de Supliese.
+                    if empresa_precio.codigo != 'supliese':
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Los equipos en cotizaciones de Servicios de Lavandería solo pueden ser de Supliese"
+                        )
                     empresa_origen_id = empresa_precio.id
 
                 pe = db.query(models.ProductoEmpresa).filter(

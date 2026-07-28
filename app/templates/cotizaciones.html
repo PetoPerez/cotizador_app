@@ -220,10 +220,10 @@
             <div style="margin-bottom:14px">
               <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500">Moneda de la cotización</div>
               <div style="display:flex;gap:8px">
-                <button id="btn-mxn" class="btn btn-primary btn-sm" style="flex:1" onclick="setMoneda('MXN')">
+                <button id="btn-mxn" class="btn btn-secondary btn-sm" style="flex:1" onclick="setMoneda('MXN')">
                   🇲🇽 MXN
                 </button>
-                <button id="btn-usd" class="btn btn-secondary btn-sm" style="flex:1" onclick="setMoneda('USD')">
+                <button id="btn-usd" class="btn btn-primary btn-sm" style="flex:1" onclick="setMoneda('USD')">
                   🇺🇸 USD
                 </button>
               </div>
@@ -415,7 +415,7 @@ let empresas = [];
 let items = [];       // items del formulario nueva cotización
 let clienteId = null;
 let estadoEditId = null;
-let monedaSeleccionada = 'MXN';
+let monedaSeleccionada = 'USD';  // por default las cotizaciones se muestran en dólares
 let tipoCambioEditable = null;  // tipo de cambio que el usuario puede editar
 let empresasSeleccionadas = ['clm'];  // empresas para las que se generará la cotización
 
@@ -483,6 +483,34 @@ function precioListaItem(item) {
     return usd * (getTipoCambio() || 1);
   }
   return parseFloat(entidad.precio_lista) || 0;  // USD (cotización de otra empresa)
+}
+
+// ─── Conversión a la moneda seleccionada ──────────────────
+// precioListaItem devuelve montos en la moneda "interna": MXN para servicios y
+// equipos SDL (ya normalizados), USD para productos de otras empresas. Estos
+// helpers convierten ese monto interno a la moneda que el usuario eligió mostrar
+// (monedaSeleccionada), y de vuelta, para que la captura y el total sean
+// coherentes con la cotización.
+function _internoEsMXN() {
+  // En modo servicios (SDL) lo interno es MXN; en el resto, USD.
+  return esModoServicios();
+}
+
+function aMonedaMostrada(interno) {
+  const tc = getTipoCambio() || 1;
+  if (_internoEsMXN()) return monedaSeleccionada === 'USD' ? interno / tc : interno;
+  return monedaSeleccionada === 'MXN' ? interno * tc : interno;
+}
+
+function aInterno(mostrado) {
+  const tc = getTipoCambio() || 1;
+  if (_internoEsMXN()) return monedaSeleccionada === 'USD' ? mostrado * tc : mostrado;
+  return monedaSeleccionada === 'MXN' ? mostrado / tc : mostrado;
+}
+
+// Formatea un monto interno en la moneda seleccionada.
+function fmtMon(interno) {
+  return formatCurrency(aMonedaMostrada(interno), monedaSeleccionada, 1);
 }
 
 function actualizarLabelesItems() {
@@ -701,14 +729,14 @@ function configurarEmpresasPorRol() {
 function resetNueva() {
   items = [];
   clienteId = null;
-  monedaSeleccionada = 'MXN';
+  monedaSeleccionada = 'USD';
   document.getElementById('buscar-cliente').value = '';
   document.getElementById('cliente-seleccionado').style.display = 'none';
   document.getElementById('f-notas').value = '';
   document.getElementById('f-ciudad-entrega').value = '';
   document.querySelectorAll('.chk-tiempo').forEach(c => c.checked = false);
   cargarTipoCambioAPI();
-  setMoneda('MXN');
+  setMoneda('USD');
   renderItems();
   calcularTotales();
 }
@@ -791,9 +819,9 @@ function renderItems() {
     const nombreSel = entidad ?
       (item.esServicio
          ? `<div style="font-weight:600;font-size:13px;color:var(--text)">${entidad.nombre}</div>
-            <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${formatMXN(precioLista)}</div>`
+            <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${fmtMon(precioLista)}</div>`
          : `<div style="font-weight:600;font-size:13px;color:var(--text)">${entidad.marca} · ${entidad.equipo}</div>
-            <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${entidad.modelo} · ${formatMXN(precioLista)}${origenTag}</div>`)
+            <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px">${entidad.modelo} · ${fmtMon(precioLista)}${origenTag}</div>`)
       : '';
 
     return `
@@ -836,12 +864,12 @@ function renderItems() {
         </div>
         <div class="precio-preview">
           <span style="color:var(--text3);font-size:12px">
-            Lista: <strong style="font-family:'DM Mono',monospace">${formatMXN(precioLista)}</strong>
+            Lista: <strong style="font-family:'DM Mono',monospace">${fmtMon(precioLista)}</strong>
           </span>
           <label style="display:flex;align-items:center;gap:6px;margin:0">
             <span style="font-size:11px;color:var(--text3);white-space:nowrap">Unitario $</span>
             <input type="number" id="precio-unit-${i}"
-                   value="${precioFinal.toFixed(2)}" step="0.01" min="0"
+                   value="${aMonedaMostrada(precioFinal).toFixed(2)}" step="0.01" min="0"
                    style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;
                           padding:5px 8px;color:var(--text);font-family:'DM Mono',monospace;
                           font-size:13px;width:120px;outline:none;text-align:right"
@@ -849,7 +877,7 @@ function renderItems() {
                    onfocus="this.style.borderColor='var(--accent)'"
                    onblur="normalizarPrecio(${i})">
           </label>
-          <span class="final">${formatMXN(importe)}</span>
+          <span class="final">${fmtMon(importe)}</span>
         </div>
       </div>` : ''}
     </div>`;
@@ -879,15 +907,14 @@ function buscarProductoItem(i, q) {
       (s.descripcion || '').toLowerCase().includes(texto)
     ).slice(0, 10);
   } else if (esEquipoSDL) {
-    // El precio del equipo depende de la empresa, así que se ofrece una opción
-    // por cada combinación (equipo, empresa) con su precio.
+    // Los equipos ofertados desde Servicios de Lavandería se toman solo del
+    // catálogo de Supliese (no de todas las empresas).
     matches = [];
     productos.filter(coincide).forEach(p => {
       (p.empresas || []).filter(pe => pe.activo).forEach(pe => {
         const emp = empresas.find(e => e.id === pe.empresa_id);
-        if (emp && emp.codigo !== 'servicios_lavanderia') {
-          // precio_lista está en USD; se muestra su equivalente en MXN, que es
-          // la moneda en que quedará la cotización SDL.
+        if (emp && emp.codigo === 'supliese') {
+          // precio_lista está en USD; se normaliza a MXN (base interna de SDL).
           const precioMXN = parseFloat(pe.precio_lista) * (getTipoCambio() || 1);
           matches.push({ producto: p, empresa: emp, precio: precioMXN });
         }
@@ -913,7 +940,7 @@ function buscarProductoItem(i, q) {
         <div style="font-weight:600;font-size:13px;color:var(--text)">${s.nombre}</div>
         <div style="display:flex;gap:16px;margin-top:3px">
           <span style="font-size:12px;color:var(--text3)">${(s.descripcion || '').substring(0, 60)}</span>
-          <span style="font-size:12px;color:var(--accent2);font-weight:600;margin-left:auto">${formatMXN(s.precio_unitario)}</span>
+          <span style="font-size:12px;color:var(--accent2);font-weight:600;margin-left:auto">${fmtMon(s.precio_unitario)}</span>
         </div>
       </div>
     `).join('');
@@ -927,7 +954,7 @@ function buscarProductoItem(i, q) {
         <div style="display:flex;gap:16px;margin-top:3px;align-items:center">
           <span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${m.producto.modelo}</span>
           <span class="badge badge-gray" style="margin-left:auto">${m.empresa.acronimo}</span>
-          <span style="font-size:12px;color:var(--accent2);font-weight:600">${formatMXN(m.precio)}</span>
+          <span style="font-size:12px;color:var(--accent2);font-weight:600">${fmtMon(m.precio)}</span>
         </div>
       </div>
     `).join('');
@@ -940,7 +967,7 @@ function buscarProductoItem(i, q) {
         <div style="font-weight:600;font-size:13px;color:var(--text)">${p.marca} · ${p.equipo}</div>
         <div style="display:flex;gap:16px;margin-top:3px">
           <span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${p.modelo}</span>
-          <span style="font-size:12px;color:var(--accent2);font-weight:600">${formatMXN(p.precio_lista)}</span>
+          <span style="font-size:12px;color:var(--accent2);font-weight:600">${fmtMon(p.precio_lista)}</span>
         </div>
       </div>
     `).join('');
@@ -996,13 +1023,15 @@ function cambiarAjuste(i, val) {
   const preview     = row.querySelector('.precio-preview .final');
   const precioInput = document.getElementById(`precio-unit-${i}`);
   if (sliderVal)   sliderVal.textContent = (items[i].ajuste >= 0 ? '+' : '') + items[i].ajuste + '%';
-  if (preview)     preview.textContent   = formatMXN(importe);
-  if (precioInput) { precioInput.value = precioFinal.toFixed(2); precioInput.style.borderColor = 'var(--border)'; }
+  if (preview)     preview.textContent   = fmtMon(importe);
+  if (precioInput) { precioInput.value = aMonedaMostrada(precioFinal).toFixed(2); precioInput.style.borderColor = 'var(--border)'; }
   calcularTotales();
 }
 
 function cambiarPrecioManual(i, val) {
-  const precio = parseFloat(val);
+  // El usuario captura el precio en la moneda mostrada; se convierte a la
+  // moneda interna para derivar el % de ajuste sobre el precio de lista.
+  const precio = aInterno(parseFloat(val));
   if (isNaN(precio) || precio <= 0) return;
   const entidad = entidadDelItem(items[i]);
   if (!entidad) return;
@@ -1027,7 +1056,7 @@ function cambiarPrecioManual(i, val) {
 
   if (slider)    slider.value           = ajuste;
   if (sliderVal) sliderVal.textContent  = (ajuste >= 0 ? '+' : '') + ajuste + '%';
-  if (preview)   preview.textContent    = formatMXN(importe);
+  if (preview)   preview.textContent    = fmtMon(importe);
   if (precioInput) precioInput.style.borderColor = fuera ? 'var(--danger)' : 'var(--accent)';
   calcularTotales();
 }
@@ -1038,7 +1067,7 @@ function normalizarPrecio(i) {
   const entidad = entidadDelItem(items[i]);
   if (!entidad) return;
   const precioFinal = precioListaItem(items[i]) * (1 + items[i].ajuste / 100);
-  input.value = precioFinal.toFixed(2);
+  input.value = aMonedaMostrada(precioFinal).toFixed(2);
   input.style.borderColor = 'var(--border)';
 }
 
@@ -1058,22 +1087,9 @@ function calcularTotales() {
   const iva = subtotal * 0.16;
   const total = subtotal + iva;
 
-  const tcReal = getTipoCambio() || 1;
-  const esSvc = esModoServicios();
-
-  // Convierte el monto interno (USD para productos, MXN para servicios) a la moneda mostrada.
-  function convertir(monto) {
-    if (esSvc) {
-      // Interno = MXN
-      return monedaSeleccionada === 'USD' ? monto / tcReal : monto;
-    }
-    // Interno = USD
-    return monedaSeleccionada === 'MXN' ? monto * tcReal : monto;
-  }
-
-  document.getElementById('r-subtotal').textContent = formatCurrency(convertir(subtotal), monedaSeleccionada, 1);
-  document.getElementById('r-iva').textContent      = formatCurrency(convertir(iva),      monedaSeleccionada, 1);
-  document.getElementById('r-total').textContent    = formatCurrency(convertir(total),    monedaSeleccionada, 1);
+  document.getElementById('r-subtotal').textContent = fmtMon(subtotal);
+  document.getElementById('r-iva').textContent      = fmtMon(iva);
+  document.getElementById('r-total').textContent    = fmtMon(total);
 }
 
 // ─── Generar cotización ───────────────────────────────────
