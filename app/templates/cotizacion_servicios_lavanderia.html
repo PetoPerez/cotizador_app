@@ -555,7 +555,7 @@ body {
         <tr>
             <td class="col-num">{{ loop.index }}</td>
             {% if item.servicio %}
-                <td class="col-marca">Mantenimiento</td>
+                <td class="col-marca">{% if item.servicio.tipo == 'puesta_en_marcha' %}Puesta en marcha{% elif item.servicio.tipo == 'otro' %}Servicio{% else %}Mantenimiento{% endif %}</td>
                 <td class="col-mod">{{ item.servicio.nombre }}</td>
                 <td class="col-desc">{% if item.servicio.descripcion %}{{ item.servicio.descripcion }}{% endif %}</td>
             {% elif item.producto %}
@@ -584,15 +584,22 @@ body {
 <div class="content content-bottom">
 
 <!-- ═══ BLOQUE TRIPLE: ALCANCE + CONDICIONES + TOTALES ═══ -->
-{# Una cotización SDL puede llevar servicios, equipos o ambos. El alcance aplica
-   a los servicios y el tiempo de entrega a los equipos, así que cada bloque se
-   muestra solo cuando corresponde. #}
+{# Una cotización SDL puede llevar servicios, equipos o ambos. El tiempo de
+   entrega aplica a los equipos. El "Alcance del servicio" es la lista genérica
+   del MANTENIMIENTO; para puesta en marcha la descripción de cada partida ya
+   detalla su alcance, así que ese bloque solo se muestra si hay mantenimiento
+   (o si el usuario capturó un alcance a mano). #}
 {% set tiene_servicios = (cot.items | selectattr('servicio') | list | length) > 0 %}
 {% set tiene_productos = (cot.items | selectattr('producto') | list | length) > 0 %}
+{% set ns_srv = namespace(mantto=false) %}
+{% for it in cot.items %}
+  {% if it.servicio and it.servicio.tipo == 'mantenimiento' %}{% set ns_srv.mantto = true %}{% endif %}
+{% endfor %}
+{% set mostrar_alcance = ns_srv.mantto or cot.alcance_servicio %}
 <div class="triple">
 
-  <!-- ALCANCE DEL SERVICIO — solo si la cotización incluye servicios -->
-  {% if tiene_servicios %}
+  <!-- ALCANCE DEL SERVICIO — solo si hay mantenimiento (o alcance capturado) -->
+  {% if mostrar_alcance %}
   <div class="triple-col col-alcance">
       <div class="box-titulo"><span class="ico">✓</span>ALCANCE DEL SERVICIO</div>
       <ul class="alcance-list">
@@ -617,7 +624,7 @@ body {
   <!-- CONDICIONES COMERCIALES.
        Sin alcance (cotización solo de equipos) las dos columnas restantes se
        ensanchan para llenar la fila. -->
-  <div class="triple-col col-condic"{% if not tiene_servicios %} style="width:42%"{% endif %}>
+  <div class="triple-col col-condic"{% if not mostrar_alcance %} style="width:42%"{% endif %}>
       <div class="box-titulo">CONDICIONES COMERCIALES</div>
       <table class="condic-table">
           <tr>
@@ -643,7 +650,7 @@ body {
   </div>
 
   <!-- TOTALES -->
-  <div class="triple-col col-totales"{% if not tiene_servicios %} style="width:58%"{% endif %}>
+  <div class="triple-col col-totales"{% if not mostrar_alcance %} style="width:58%"{% endif %}>
       <div class="totales-box">
           <table>
               <tr>

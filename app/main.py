@@ -173,6 +173,12 @@ def on_startup():
               AND NOT EXISTS (SELECT 1 FROM producto_empresa pe WHERE pe.producto_id = p.id)
         """))
 
+        # ── Tipo de servicio (mantenimiento / puesta_en_marcha / otro) ──
+        conn.execute(text(
+            "ALTER TABLE servicios ADD COLUMN IF NOT EXISTS tipo "
+            "VARCHAR(20) NOT NULL DEFAULT 'mantenimiento'"
+        ))
+
         # ── Equipos de otras empresas en cotizaciones de Servicios de Lavandería ──
         # El precio vive en producto_empresa; esta columna guarda de qué empresa
         # se tomó, para que el precio_lista del ítem sea trazable.

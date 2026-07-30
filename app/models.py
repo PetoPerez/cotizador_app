@@ -84,6 +84,10 @@ class Servicio(Base):
     nombre = Column(String(200), nullable=False)
     descripcion = Column(Text)
     precio_unitario = Column(Numeric(12, 2), nullable=False)
+    # Tipo de servicio: distingue el mantenimiento de la puesta en marcha (que
+    # comparten el mismo equipo). 'otro' para cargos sueltos (flete, seguro...).
+    tipo = Column(String(20), nullable=False, default="mantenimiento",
+                  server_default=text("'mantenimiento'"))
     activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 

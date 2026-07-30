@@ -30,6 +30,7 @@
         <table>
           <thead>
             <tr>
+              <th>Tipo</th>
               <th>Nombre</th>
               <th>Descripción</th>
               <th>Precio unitario</th>
@@ -38,7 +39,7 @@
             </tr>
           </thead>
           <tbody id="tabla-body">
-            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
+            <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -56,12 +57,21 @@
     <div id="modal-alert" class="alert hidden"></div>
 
     <div class="form-group">
-      <label class="form-label">Nombre del servicio *</label>
-      <input type="text" class="form-control" id="f-nombre" placeholder="Mantenimiento preventivo lavadora 25kg">
+      <label class="form-label">Tipo de servicio *</label>
+      <select class="form-control" id="f-tipo">
+        <option value="mantenimiento">Mantenimiento</option>
+        <option value="puesta_en_marcha">Puesta en marcha</option>
+        <option value="otro">Otro (flete, seguro, etc.)</option>
+      </select>
     </div>
 
     <div class="form-group">
-      <label class="form-label">Descripción</label>
+      <label class="form-label">Nombre del servicio * <span style="font-weight:400;color:var(--text3);font-size:11px">(equipo / modelo)</span></label>
+      <input type="text" class="form-control" id="f-nombre" placeholder="Ej: LAVADORA XGQ-20FII DE 20 KG">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Descripción <span style="font-weight:400;color:var(--text3);font-size:11px">(qué incluye el servicio)</span></label>
       <textarea class="form-control" id="f-descripcion" rows="4" placeholder="Detalle del servicio: revisión, limpieza, ajustes, etc."></textarea>
     </div>
 
@@ -118,6 +128,7 @@ function renderTabla(data) {
   }
   tbody.innerHTML = data.map(s => `
     <tr>
+      <td>${tipoBadge(s.tipo)}</td>
       <td><strong style="color:var(--text)">${s.nombre}</strong></td>
       <td style="max-width:380px;color:var(--text2);font-size:13px">${s.descripcion || '—'}</td>
       <td><strong style="color:var(--accent2);font-family:'DM Mono',monospace">${formatMXN(s.precio_unitario)}</strong></td>
@@ -134,11 +145,22 @@ function renderTabla(data) {
   `).join('');
 }
 
+function tipoBadge(tipo) {
+  const map = {
+    mantenimiento:    ['badge-blue',  'Mantenimiento'],
+    puesta_en_marcha: ['badge-green', 'Puesta en marcha'],
+    otro:             ['badge-gray',  'Otro'],
+  };
+  const [cls, label] = map[tipo] || map.mantenimiento;
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
 function openModal(id = null) {
   editId = id;
   document.getElementById('modal-title').textContent = id ? 'Editar servicio' : 'Nuevo servicio';
   if (!id) {
     ['f-nombre','f-descripcion','f-precio'].forEach(f => document.getElementById(f).value = '');
+    document.getElementById('f-tipo').value = 'mantenimiento';
   }
   document.getElementById('modal').classList.add('open');
 }
@@ -154,12 +176,14 @@ function editar(id) {
   document.getElementById('f-nombre').value = s.nombre;
   document.getElementById('f-descripcion').value = s.descripcion || '';
   document.getElementById('f-precio').value = s.precio_unitario;
+  document.getElementById('f-tipo').value = s.tipo || 'mantenimiento';
   openModal(id);
 }
 
 async function guardar() {
   const body = {
     nombre: document.getElementById('f-nombre').value.trim(),
+    tipo: document.getElementById('f-tipo').value,
     descripcion: document.getElementById('f-descripcion').value.trim() || null,
     precio_unitario: parseFloat(document.getElementById('f-precio').value),
   };

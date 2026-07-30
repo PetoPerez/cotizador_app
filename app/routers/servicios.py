@@ -35,6 +35,7 @@ def crear(data: schemas.ServicioCreate, db: Session = Depends(get_db),
         nombre=data.nombre,
         descripcion=data.descripcion,
         precio_unitario=data.precio_unitario,
+        tipo=data.tipo,
     )
     db.add(servicio)
     db.flush()

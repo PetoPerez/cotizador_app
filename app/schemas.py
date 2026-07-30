@@ -191,15 +191,19 @@ class ProductoOut(BaseModel):
 
 
 # ---------- Servicio ----------
+_TIPO_SERVICIO = "^(mantenimiento|puesta_en_marcha|otro)$"
+
 class ServicioCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=200)
     descripcion: Optional[str] = Field(None, max_length=2000)
     precio_unitario: float = Field(..., gt=0, lt=10_000_000)
+    tipo: str = Field("mantenimiento", pattern=_TIPO_SERVICIO)
 
 class ServicioUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=1, max_length=200)
     descripcion: Optional[str] = Field(None, max_length=2000)
     precio_unitario: Optional[float] = Field(None, gt=0, lt=10_000_000)
+    tipo: Optional[str] = Field(None, pattern=_TIPO_SERVICIO)
     activo: Optional[bool] = None
 
 class ServicioOut(BaseModel):
@@ -207,6 +211,7 @@ class ServicioOut(BaseModel):
     nombre: str
     descripcion: Optional[str]
     precio_unitario: float
+    tipo: str = "mantenimiento"
     activo: bool
 
     model_config = {"from_attributes": True}
