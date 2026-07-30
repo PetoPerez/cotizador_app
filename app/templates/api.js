@@ -239,3 +239,64 @@ function logout() {
   localStorage.removeItem('user');
   window.location.href = '/login';
 }
+
+// ─── Vista previa de importación (candado: confirmar antes de escribir) ──────
+// Recibe el reporte de la fase 1 (confirmar=false) y devuelve una promesa que
+// resuelve true si el usuario confirma. Reutilizable por productos y servicios.
+function previewImportModal(data) {
+  return new Promise((resolve) => {
+    const r = data.resumen || {};
+    const hayQueHacer = (r.nuevos || 0) + (r.actualizar || 0) > 0;
+
+    const chip = (label, val, cls) =>
+      `<div style="flex:1;min-width:90px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center">
+         <div style="font-size:20px;font-weight:600;color:${cls}">${val || 0}</div>
+         <div style="font-size:11px;color:var(--text3)">${label}</div>
+       </div>`;
+
+    const listaNuevos = (data.nuevos || []).length
+      ? `<div style="margin-top:12px"><div style="font-size:12px;font-weight:600;color:var(--accent2);margin-bottom:4px">Nuevos</div>
+         <div style="max-height:120px;overflow-y:auto;font-size:12px;color:var(--text2)">
+           ${data.nuevos.map(x => `<div>• ${x}</div>`).join('')}</div></div>` : '';
+
+    const listaAct = (data.actualizar || []).length
+      ? `<div style="margin-top:12px"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">A actualizar (solo lo que cambió)</div>
+         <div style="max-height:150px;overflow-y:auto;font-size:12px;color:var(--text2)">
+           ${data.actualizar.map(x => `<div style="margin-bottom:3px">• <strong>${x.item}</strong>: ${x.cambios.join(', ')}</div>`).join('')}</div></div>` : '';
+
+    const listaErr = (data.errores || []).length
+      ? `<div style="margin-top:12px"><div style="font-size:12px;font-weight:600;color:var(--danger);margin-bottom:4px">Errores (no se cargarán)</div>
+         <div style="max-height:120px;overflow-y:auto;font-size:12px;color:var(--danger)">
+           ${data.errores.map(x => `<div>• ${x}</div>`).join('')}</div></div>` : '';
+
+    const nota = hayQueHacer ? '' :
+      `<div style="margin-top:12px;font-size:12px;color:var(--text3)">No hay nada nuevo ni cambios que aplicar.</div>`;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:560px">
+        <div class="modal-header">
+          <div class="modal-title">Vista previa de importación</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${chip('Nuevos', r.nuevos, 'var(--accent2)')}
+          ${chip('A actualizar', r.actualizar, 'var(--accent)')}
+          ${chip('Sin cambios', r.sin_cambios, 'var(--text2)')}
+          ${chip('Errores', r.errores, 'var(--danger)')}
+        </div>
+        ${listaErr}${listaAct}${listaNuevos}${nota}
+        <div class="flex gap-8 mt-16" style="justify-content:flex-end">
+          <button class="btn btn-secondary" id="imp-cancelar">Cancelar</button>
+          <button class="btn btn-primary" id="imp-confirmar" ${hayQueHacer ? '' : 'disabled'}>
+            Confirmar e importar
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const cerrar = (val) => { overlay.remove(); resolve(val); };
+    overlay.querySelector('#imp-cancelar').onclick = () => cerrar(false);
+    const btn = overlay.querySelector('#imp-confirmar');
+    if (hayQueHacer) btn.onclick = () => cerrar(true);
+  });
+}

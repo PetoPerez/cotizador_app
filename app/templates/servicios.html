@@ -17,7 +17,16 @@
         <div class="page-title">Servicios</div>
         <div class="page-subtitle">Catálogo de servicios de mantenimiento y reparación</div>
       </div>
-      <button class="btn btn-primary" onclick="openModal()">+ Nuevo servicio</button>
+      <div class="flex gap-8">
+        <button class="btn btn-secondary" onclick="descargarPlantillaServicios()" title="Excel vacío con los encabezados">
+          ⬇ Plantilla Excel
+        </button>
+        <label class="btn btn-secondary" title="Importar servicios desde Excel">
+          ⬆ Importar Excel
+          <input type="file" id="input-excel-svc" accept=".xlsx,.xls" style="display:none" onchange="importarServicios(this)">
+        </label>
+        <button class="btn btn-primary" onclick="openModal()">+ Nuevo servicio</button>
+      </div>
     </div>
 
     <div id="alert-box" class="alert hidden"></div>
@@ -87,7 +96,7 @@
   </div>
 </div>
 
-<script src="api.js?v=3"></script>
+<script src="api.js?v=4"></script>
 <script>
 requireAuth();
 
@@ -123,7 +132,7 @@ function filtrar() {
 function renderTabla(data) {
   const tbody = document.getElementById('tabla-body');
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3)">Sin servicios registrados</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">Sin servicios registrados</td></tr>`;
     return;
   }
   tbody.innerHTML = data.map(s => `
@@ -223,6 +232,54 @@ async function desactivar(id) {
     showAlert('Servicio desactivado', 'success');
   } catch (e) {
     showAlert(e.message);
+  }
+}
+
+async function descargarPlantillaServicios() {
+  try {
+    const res = await fetch(`${API_BASE}${API_PATH}/servicios/plantilla-importar`, {
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `Error ${res.status}`);
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url; a.download = 'plantilla_servicios.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) { showAlert(`Error al descargar plantilla: ${e.message}`); }
+}
+
+async function postImportSvc(file, confirmar) {
+  const fd = new FormData(); fd.append('file', file);
+  const res = await fetch(`${API_BASE}${API_PATH}/servicios/importar?confirmar=${confirmar}`,
+    { method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+  return data;
+}
+
+async function importarServicios(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const label = input.closest('label');
+  const orig = label.childNodes[0].textContent;
+  label.childNodes[0].textContent = ' Importando...';
+  label.style.pointerEvents = 'none'; label.style.opacity = '0.6';
+  try {
+    const preview = await postImportSvc(file, false);       // fase 1: vista previa
+    const ok = await previewImportModal(preview);
+    if (!ok) { showAlert('Importación cancelada. No se guardó nada.', 'danger'); return; }
+    const res = await postImportSvc(file, true);            // fase 2: aplicar
+    await cargar();
+    const r = res.resumen || {};
+    showAlert(`✓ Importación aplicada: ${r.nuevos || 0} nuevos, ${r.actualizar || 0} actualizados, `
+              + `${r.sin_cambios || 0} sin cambios, ${r.errores || 0} con error.`, 'success');
+  } catch (e) {
+    showAlert(`Error al importar: ${e.message}`);
+  } finally {
+    label.childNodes[0].textContent = orig;
+    label.style.pointerEvents = ''; label.style.opacity = '';
   }
 }
 
