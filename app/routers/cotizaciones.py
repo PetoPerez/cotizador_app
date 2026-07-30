@@ -128,18 +128,33 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
 
         subtotal = 0.0
         for item_data in data.items:
-            # Validar que sea producto o servicio (exclusivo)
-            if not item_data.producto_id and not item_data.servicio_id:
-                raise HTTPException(status_code=400, detail="Cada ítem debe ser producto o servicio")
+            # Un ítem es producto, servicio o "servicio adicional" (variable, sin
+            # catálogo: flete, maniobras, etc.).
             if item_data.producto_id and item_data.servicio_id:
                 raise HTTPException(status_code=400, detail="Un ítem no puede ser producto y servicio a la vez")
+            es_adicional = not item_data.producto_id and not item_data.servicio_id
 
             precio_lista_emp = None
             producto = None
             servicio = None
-
             empresa_origen_id = None
-            if item_data.producto_id:
+            ajuste = item_data.porcentaje_ajuste
+
+            if es_adicional:
+                # Servicio adicional: ítem variable capturado a mano. Solo en SDL.
+                if empresa.codigo != 'servicios_lavanderia':
+                    raise HTTPException(status_code=400, detail="Los servicios adicionales solo aplican a Servicios de Lavandería")
+                if not (item_data.descripcion_libre or '').strip():
+                    raise HTTPException(status_code=400, detail="El servicio adicional requiere una descripción")
+                if item_data.precio_unitario is None or item_data.precio_unitario <= 0:
+                    raise HTTPException(status_code=400, detail="El servicio adicional requiere un precio mayor a cero")
+                # Capturado en la moneda mostrada; SDL trabaja en MXN, así que se
+                # normaliza a MXN si la cotización está en USD (como los equipos).
+                precio_lista_emp = float(item_data.precio_unitario)
+                if data.moneda == 'USD' and tc:
+                    precio_lista_emp *= float(tc)
+                ajuste = 0.0  # precio fijo capturado, sin margen
+            elif item_data.producto_id:
                 producto = db.query(models.Producto).filter(
                     models.Producto.id == item_data.producto_id,
                     models.Producto.activo == True
@@ -205,15 +220,16 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                     raise HTTPException(status_code=400, detail="Los servicios solo pueden cotizarse en Servicios de Lavandería")
                 precio_lista_emp = float(servicio.precio_unitario)
 
-            # Validar rango de ajuste
-            if not (float(current_user.margen_min) <= item_data.porcentaje_ajuste <= float(current_user.margen_max)):
+            # Validar rango de ajuste (no aplica a servicios adicionales: su
+            # precio es fijo y capturado, sin margen).
+            if not es_adicional and not (float(current_user.margen_min) <= item_data.porcentaje_ajuste <= float(current_user.margen_max)):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Ajuste {item_data.porcentaje_ajuste}% fuera del rango permitido "
                            f"[{current_user.margen_min}%, {current_user.margen_max}%]"
                 )
 
-            precio_final = precio_lista_emp * (1 + item_data.porcentaje_ajuste / 100)
+            precio_final = precio_lista_emp * (1 + ajuste / 100)
             importe = precio_final * item_data.cantidad
 
             item = models.CotizacionItem(
@@ -224,7 +240,7 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 descripcion_libre=item_data.descripcion_libre,
                 cantidad=item_data.cantidad,
                 precio_lista=precio_lista_emp,
-                porcentaje_ajuste=item_data.porcentaje_ajuste,
+                porcentaje_ajuste=ajuste,
                 precio_final=round(precio_final, 2),
                 importe=round(importe, 2),
             )

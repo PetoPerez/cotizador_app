@@ -195,6 +195,8 @@
                      servicios se pueden cotizar equipos de otras empresas. -->
                 <button id="items-add-equipo-btn" class="btn btn-secondary btn-sm"
                         style="display:none" onclick="agregarItem(false)">+ Agregar equipo</button>
+                <button id="items-add-adicional-btn" class="btn btn-secondary btn-sm"
+                        style="display:none" onclick="agregarAdicional()">+ Servicio adicional</button>
                 <button id="items-add-btn" class="btn btn-secondary btn-sm" onclick="agregarItem()">+ Agregar producto</button>
               </div>
             </div>
@@ -470,6 +472,8 @@ function empresaOrigenDelItem(item) {
 }
 
 function precioListaItem(item) {
+  // Servicio adicional: precio capturado a mano, ya guardado en moneda interna (MXN).
+  if (item.esAdicional) return parseFloat(item.precioAdicional) || 0;
   const entidad = entidadDelItem(item);
   if (!entidad) return 0;
   if (item.esServicio) return parseFloat(entidad.precio_unitario) || 0;  // MXN
@@ -519,11 +523,12 @@ function actualizarLabelesItems() {
   const titulo = document.getElementById('items-titulo');
   const btn = document.getElementById('items-add-btn');
   const btnEq = document.getElementById('items-add-equipo-btn');
+  const btnAd = document.getElementById('items-add-adicional-btn');
   if (titulo) titulo.textContent = isSvc ? 'Servicios y equipos' : 'Productos';
   if (btn)    btn.textContent    = isSvc ? '+ Agregar servicio' : '+ Agregar producto';
-  // El botón de equipos solo aplica a Servicios de Lavandería: su catálogo no
-  // tiene equipos, así que se toman del de otras empresas.
+  // Equipos y servicios adicionales solo aplican a Servicios de Lavandería.
   if (btnEq)  btnEq.style.display = isSvc ? '' : 'none';
+  if (btnAd)  btnAd.style.display = isSvc ? '' : 'none';
 }
 
 // ─── Inicialización ───────────────────────────────────────
@@ -795,6 +800,73 @@ function agregarItem(esServicio) {
   renderItems();
 }
 
+// Servicio adicional: ítem variable (flete, maniobras...) capturado a mano,
+// sin catálogo. Solo en Servicios de Lavandería. precioAdicional se guarda en
+// la moneda interna (MXN); la captura y el total lo muestran en la moneda
+// seleccionada vía los helpers de conversión.
+function agregarAdicional() {
+  items.push({
+    productoId: null,
+    servicioId: null,
+    empresaOrigenId: null,
+    esAdicional: true,
+    descripcion: '',
+    precioAdicional: 0,   // interno (MXN)
+    cantidad: 1,
+    ajuste: 0,
+  });
+  renderItems();
+}
+
+function renderAdicionalRow(item, i) {
+  const importeInterno = precioListaItem(item) * item.cantidad;
+  const descEsc = (item.descripcion || '').replace(/"/g, '&quot;');
+  return `
+    <div class="item-row" id="item-row-${i}">
+      <button class="remove-btn" onclick="quitarItem(${i})">×</button>
+      <div class="item-grid">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Servicio adicional</label>
+          <input type="text" class="form-control" value="${descEsc}"
+                 placeholder="Ej: Flete, maniobras de descarga, instalación..."
+                 oninput="cambiarDescAdicional(${i}, this.value)">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Cantidad</label>
+          <input type="number" class="form-control" value="${item.cantidad}" min="1"
+            onchange="cambiarCantidad(${i}, this.value)">
+        </div>
+      </div>
+      <div class="precio-preview" style="margin-top:12px">
+        <label style="display:flex;align-items:center;gap:6px;margin:0">
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">Precio unitario $</span>
+          <input type="number" id="precio-unit-${i}"
+                 value="${aMonedaMostrada(item.precioAdicional).toFixed(2)}" step="0.01" min="0"
+                 style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+                        padding:5px 8px;color:var(--text);font-family:'DM Mono',monospace;
+                        font-size:13px;width:120px;outline:none;text-align:right"
+                 oninput="cambiarPrecioAdicional(${i}, this.value)">
+        </label>
+        <span class="final">${fmtMon(importeInterno)}</span>
+      </div>
+    </div>`;
+}
+
+function cambiarDescAdicional(i, val) {
+  items[i].descripcion = val;
+}
+
+function cambiarPrecioAdicional(i, val) {
+  const mostrado = parseFloat(val);
+  items[i].precioAdicional = isNaN(mostrado) ? 0 : aInterno(mostrado);  // se guarda interno
+  const row = document.getElementById(`item-row-${i}`);
+  if (row) {
+    const preview = row.querySelector('.precio-preview .final');
+    if (preview) preview.textContent = fmtMon(precioListaItem(items[i]) * items[i].cantidad);
+  }
+  calcularTotales();
+}
+
 function renderItems() {
   const container = document.getElementById('items-container');
   if (!items.length) {
@@ -804,6 +876,7 @@ function renderItems() {
   }
 
   container.innerHTML = items.map((item, i) => {
+    if (item.esAdicional) return renderAdicionalRow(item, i);
     const entidad = entidadDelItem(item);
     const precioLista = precioListaItem(item);
     const precioFinal = precioLista * (1 + item.ajuste / 100);
@@ -1079,8 +1152,8 @@ function quitarItem(i) {
 function calcularTotales() {
   let subtotal = 0;
   items.forEach(item => {
-    const entidad = entidadDelItem(item);
-    if (!entidad) return;
+    // Los servicios adicionales no tienen entidad de catálogo pero sí cuentan.
+    if (!item.esAdicional && !entidadDelItem(item)) return;
     const precioFinal = precioListaItem(item) * (1 + item.ajuste / 100);
     subtotal += precioFinal * item.cantidad;
   });
@@ -1095,8 +1168,10 @@ function calcularTotales() {
 // ─── Generar cotización ───────────────────────────────────
 async function generarCotizacion() {
   if (!clienteId) { showAlert('Selecciona un cliente'); return; }
-  const itemsValidos = items.filter(i => i.productoId || i.servicioId);
-  if (!itemsValidos.length) { showAlert('Agrega al menos un producto o servicio'); return; }
+  const itemsValidos = items.filter(i =>
+    i.productoId || i.servicioId ||
+    (i.esAdicional && (i.descripcion || '').trim() && i.precioAdicional > 0));
+  if (!itemsValidos.length) { showAlert('Agrega al menos un producto, servicio o servicio adicional'); return; }
   if (!empresasSeleccionadas.length) { showAlert('Selecciona al menos una empresa'); return; }
 
   const btn = document.getElementById('btn-generar');
@@ -1123,8 +1198,11 @@ async function generarCotizacion() {
         producto_id: i.productoId || null,
         servicio_id: i.servicioId || null,
         empresa_origen_id: i.empresaOrigenId || null,
+        // Servicio adicional: descripción libre + precio unitario en la moneda mostrada.
+        descripcion_libre: i.esAdicional ? (i.descripcion || '').trim() : null,
+        precio_unitario: i.esAdicional ? aMonedaMostrada(i.precioAdicional) : null,
         cantidad: i.cantidad,
-        porcentaje_ajuste: i.ajuste,
+        porcentaje_ajuste: i.esAdicional ? 0 : i.ajuste,
       })),
     };
     const cotizaciones = await apiFetch('/cotizaciones/', { method: 'POST', body: JSON.stringify(body) });

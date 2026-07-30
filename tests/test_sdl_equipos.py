@@ -216,5 +216,51 @@ check("Default: cotización sin 'moneda' se guarda en USD",
       r.status_code == 200 and r.json()[0]["moneda"] == "USD",
       f"{r.status_code} {r.text[:120]}")
 
+# 10) SERVICIO ADICIONAL en SDL, cotización en MXN: precio se guarda tal cual.
+r = crear(h_sdl, ["servicios_lavanderia"], [
+    {"descripcion_libre": "Flete a Guadalajara", "precio_unitario": 3500, "cantidad": 1,
+     "porcentaje_ajuste": 0}], moneda="MXN", tc=18)
+if r.status_code == 200:
+    it = r.json()[0]["items"][0]
+    check("SDL adicional (MXN): guarda descripción y precio 3,500",
+          it["descripcion_libre"] == "Flete a Guadalajara" and it["precio_lista"] == 3500.0
+          and it["producto_id"] is None and it["servicio_id"] is None,
+          str(it))
+else:
+    check("SDL adicional (MXN)", False, r.text[:180])
+
+# 11) SERVICIO ADICIONAL en SDL, cotización en USD: se normaliza USD->MXN (x tc).
+r = crear(h_sdl, ["servicios_lavanderia"], [
+    {"descripcion_libre": "Maniobras", "precio_unitario": 100, "cantidad": 2,
+     "porcentaje_ajuste": 0}], moneda="USD", tc=18)
+if r.status_code == 200:
+    it = r.json()[0]["items"][0]
+    check("SDL adicional (USD 100, tc=18): se guarda en MXN (1,800) e importe 3,600",
+          it["precio_lista"] == 1800.0 and it["importe"] == 3600.0, str(it))
+else:
+    check("SDL adicional (USD)", False, r.text[:180])
+
+# 12) Mezcla servicio + equipo + adicional en una sola cotización SDL.
+r = crear(h_sdl, ["servicios_lavanderia"], [
+    {"servicio_id": IDS["svc"], "cantidad": 1, "porcentaje_ajuste": 0},
+    {"producto_id": IDS["prod"], "empresa_origen_id": IDS["sup"], "cantidad": 1, "porcentaje_ajuste": 0},
+    {"descripcion_libre": "Flete", "precio_unitario": 2000, "cantidad": 1, "porcentaje_ajuste": 0},
+], moneda="MXN", tc=18)
+check("SDL: servicio + equipo + adicional en una cotización (3 ítems)",
+      r.status_code == 200 and len(r.json()[0]["items"]) == 3, f"{r.status_code} {r.text[:180]}")
+
+# 13) Servicio adicional NO permitido fuera de SDL (vendedor CLM).
+r = crear(h_clm, ["clm"], [
+    {"descripcion_libre": "Flete", "precio_unitario": 500, "cantidad": 1, "porcentaje_ajuste": 0}])
+check("Adicional fuera de SDL -> 400", r.status_code == 400, f"{r.status_code} {r.text[:160]}")
+
+# 14) Adicional sin descripción / sin precio -> 400.
+r = crear(h_sdl, ["servicios_lavanderia"], [
+    {"descripcion_libre": "   ", "precio_unitario": 500, "cantidad": 1, "porcentaje_ajuste": 0}])
+check("Adicional sin descripción -> 400", r.status_code == 400, f"{r.status_code} {r.text[:160]}")
+r = crear(h_sdl, ["servicios_lavanderia"], [
+    {"descripcion_libre": "Flete", "cantidad": 1, "porcentaje_ajuste": 0}])
+check("Adicional sin precio -> 400", r.status_code == 400, f"{r.status_code} {r.text[:160]}")
+
 print()
 sys.exit(1 if fallos else 0)

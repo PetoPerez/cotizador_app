@@ -219,6 +219,10 @@ class CotizacionItemCreate(BaseModel):
     descripcion_libre: Optional[str] = None
     cantidad: int
     porcentaje_ajuste: float = 0.0
+    # Servicio adicional (flete, maniobras, etc.): precio unitario capturado a
+    # mano, en la moneda de la cotización. Solo para ítems sin producto ni
+    # servicio; se ignora en los demás.
+    precio_unitario: Optional[float] = Field(None, gt=0, lt=10_000_000)
     # Empresa de cuyo catálogo se toma el precio del equipo. El precio vive en
     # producto_empresa (uno por empresa), así que al cotizar equipos desde
     # Servicios de Lavandería —cuyo catálogo no tiene equipos— el vendedor debe
