@@ -77,15 +77,17 @@ Menú lateral → **Cotizaciones** → **+ Nueva cotización**.
 ### 5.3 Empresa
 - **Servicios de Lavandería** ya viene preseleccionada.
 
-### 5.4 Agregar servicios y equipos
-En SDL tienes **dos botones**:
+### 5.4 Agregar servicios, equipos y servicios adicionales
+En SDL tienes **tres botones**:
 
 - **+ Agregar servicio** — busca por nombre en tu catálogo de servicios.
 - **+ Agregar equipo** — busca un equipo del catálogo de **Supliese**
   (marca, equipo o modelo). Solo se ofrecen equipos de Supliese.
+- **+ Servicio adicional** — para cargos **variables que no están en catálogo**
+  (flete, maniobras, instalación, etc.).
 
-Puedes mezclar **servicios y equipos** en la misma cotización. Para cada
-renglón:
+Puedes **mezclar los tres tipos** en la misma cotización. Para servicios y
+equipos:
 
 1. Selecciona el servicio o equipo.
 2. Ajusta la **cantidad**.
@@ -95,6 +97,21 @@ renglón:
 
 > Los equipos muestran de dónde proviene el precio (Supliese). El precio de
 > lista lo define el administrador; tú te mueves dentro de tu margen.
+
+#### Servicios adicionales (flete, maniobras, etc.)
+Con **+ Servicio adicional** agregas un renglón **totalmente editable**, sin
+catálogo:
+
+1. Escribe la **descripción** (p. ej. "Flete a Guadalajara", "Maniobras de
+   descarga").
+2. Captura la **cantidad** y el **precio unitario**.
+3. Quita el renglón con la **×**.
+
+- No usa deslizador de ajuste: el **precio que capturas es el final**.
+- Se captura en la **moneda seleccionada** de la cotización (USD o MXN) y se
+  suma al total como cualquier otro renglón.
+- En el PDF aparece con la etiqueta **"Servicio adicional"** en la columna de
+  marca.
 
 ### 5.5 Entrega
 - Captura la **Ciudad de entrega**.
@@ -110,13 +127,15 @@ renglón:
 
 ## 6. Cómo se ve el PDF combinado
 
-En una cotización con servicios y equipos, el PDF muestra:
+En una cotización con servicios, equipos y/o servicios adicionales, el PDF
+muestra:
 
 - **Alcance del servicio** → aparece **solo si hay servicios**.
 - **Tiempo de entrega** → aparece **solo si hay equipos**; en una cotización
   combinada se etiqueta **"TIEMPO DE ENTREGA (EQUIPOS)"** para dejar claro a qué
   aplica.
-- La tabla lista servicios (Mantenimiento) y equipos (marca/modelo) juntos.
+- La tabla lista juntos los servicios (**Mantenimiento**), los equipos
+  (**marca/modelo**) y los cargos variables (**Servicio adicional**).
 
 ---
 
@@ -148,3 +167,11 @@ Verifica la **moneda** y el **tipo de cambio** en el panel de la derecha.
 
 **¿El servicio cambia de precio con el tipo de cambio?**
 Se captura en MXN. Si la cotización está en USD, se muestra convertido a dólares.
+
+**¿Cómo cobro un flete o unas maniobras que no están en catálogo?**
+Usa **+ Servicio adicional**: escribe la descripción y el precio. Es un renglón
+libre que solo existe en esa cotización; no se guarda en ningún catálogo.
+
+**Cambié la moneda y el precio del servicio adicional se ajustó.**
+Es correcto: el sistema mantiene el mismo valor y lo muestra convertido a la
+moneda que tengas seleccionada, igual que el resto de los renglones.
