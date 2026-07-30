@@ -484,7 +484,7 @@ function precioListaItem(item) {
   if (item.empresaOrigenId) {
     const pe = (entidad.empresas || []).find(x => x.empresa_id === item.empresaOrigenId && x.activo);
     const usd = pe ? parseFloat(pe.precio_lista) : 0;
-    return usd * (getTipoCambio() || 1);
+    return usd * tcActual();
   }
   return parseFloat(entidad.precio_lista) || 0;  // USD (cotización de otra empresa)
 }
@@ -500,14 +500,21 @@ function _internoEsMXN() {
   return esModoServicios();
 }
 
+// Tipo de cambio efectivo: el que el usuario editó en la cotización actual y,
+// si no, el de referencia (caché de la API). Es el mismo que se envía al
+// generar, para que el total en pantalla coincida con el del PDF.
+function tcActual() {
+  return tipoCambioEditable || getTipoCambio() || 1;
+}
+
 function aMonedaMostrada(interno) {
-  const tc = getTipoCambio() || 1;
+  const tc = tcActual();
   if (_internoEsMXN()) return monedaSeleccionada === 'USD' ? interno / tc : interno;
   return monedaSeleccionada === 'MXN' ? interno * tc : interno;
 }
 
 function aInterno(mostrado) {
-  const tc = getTipoCambio() || 1;
+  const tc = tcActual();
   if (_internoEsMXN()) return monedaSeleccionada === 'USD' ? mostrado * tc : mostrado;
   return monedaSeleccionada === 'MXN' ? mostrado / tc : mostrado;
 }
@@ -988,7 +995,7 @@ function buscarProductoItem(i, q) {
         const emp = empresas.find(e => e.id === pe.empresa_id);
         if (emp && emp.codigo === 'supliese') {
           // precio_lista está en USD; se normaliza a MXN (base interna de SDL).
-          const precioMXN = parseFloat(pe.precio_lista) * (getTipoCambio() || 1);
+          const precioMXN = parseFloat(pe.precio_lista) * tcActual();
           matches.push({ producto: p, empresa: emp, precio: precioMXN });
         }
       });
