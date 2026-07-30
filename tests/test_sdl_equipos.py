@@ -36,34 +36,18 @@ if not any(h in os.environ["DATABASE_URL"] for h in ("localhost", "127.0.0.1")):
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import text
 from fastapi.testclient import TestClient
 from app.main import app
-from app.database import SessionLocal, engine
+from app.database import SessionLocal
 from app import models
 from app.security import hash_password
 
-# Paridad con producción: allí la tabla `empresas` se creó con el DDL crudo de
-# main.py (id UUID DEFAULT gen_random_uuid()). Si dejamos que create_all() la
-# cree, queda sin default de servidor y el INSERT de empresas iniciales falla.
-with engine.connect() as c:
-    c.execute(text("""
-        CREATE TABLE IF NOT EXISTS empresas (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            codigo VARCHAR(30) NOT NULL UNIQUE,
-            acronimo VARCHAR(10) NOT NULL UNIQUE,
-            nombre VARCHAR(200) NOT NULL,
-            nombre_corto VARCHAR(50),
-            direccion TEXT, rfc VARCHAR(20), telefono VARCHAR(30), email VARCHAR(150),
-            logo_url TEXT, logo_decoracion_url TEXT, template_pdf VARCHAR(100),
-            activa BOOLEAN NOT NULL DEFAULT TRUE,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-    """))
-    c.commit()
-
+# Arranca contra una BD vacía: on_startup crea las tablas, corre las migraciones
+# idempotentes y siembra las empresas iniciales. (Los modelos definen
+# server_default para las PKs UUID y para empresas.activa, así que create_all
+# genera esos valores y el seed de empresas funciona en una BD nueva.)
 client = TestClient(app)
-client.__enter__()  # dispara on_startup -> crea tablas, migraciones y empresas iniciales
+client.__enter__()
 
 
 def login(email, password="secret123"):

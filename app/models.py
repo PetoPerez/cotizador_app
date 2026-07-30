@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Boolean, Numeric, Integer,
-    Text, ForeignKey, DateTime, CheckConstraint
+    Text, ForeignKey, DateTime, CheckConstraint, text
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -16,7 +16,7 @@ def now_utc():
 class Usuario(Base):
     __tablename__ = "usuarios"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     nombre = Column(String(100), nullable=False)
     email = Column(String(150), nullable=False, unique=True)
     password_hash = Column(Text, nullable=False)
@@ -37,7 +37,7 @@ class Usuario(Base):
 class Cliente(Base):
     __tablename__ = "clientes"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     nombre_razon_social = Column(String(200), nullable=False)
     telefono = Column(String(30))
     email = Column(String(150))
@@ -61,7 +61,7 @@ class Cliente(Base):
 class Empresa(Base):
     __tablename__ = "empresas"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     codigo = Column(String(30), nullable=False, unique=True)
     acronimo = Column(String(10), nullable=False, unique=True)
     nombre = Column(String(200), nullable=False)
@@ -73,14 +73,14 @@ class Empresa(Base):
     logo_url = Column(Text)
     logo_decoracion_url = Column(Text)
     template_pdf = Column(String(100))
-    activa = Column(Boolean, nullable=False, default=True)
+    activa = Column(Boolean, nullable=False, default=True, server_default=text("true"))
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
 
 class Servicio(Base):
     __tablename__ = "servicios"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     nombre = Column(String(200), nullable=False)
     descripcion = Column(Text)
     precio_unitario = Column(Numeric(12, 2), nullable=False)
@@ -104,7 +104,7 @@ class ProductoEmpresa(Base):
 class ProductoImagen(Base):
     __tablename__ = "producto_imagenes"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id", ondelete="CASCADE"), nullable=False)
     url = Column(Text, nullable=False)
     orden = Column(Integer, nullable=False, default=0)
@@ -116,7 +116,7 @@ class ProductoImagen(Base):
 class Producto(Base):
     __tablename__ = "productos"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     marca = Column(String(100), nullable=False)
     equipo = Column(String(100), nullable=False)
     modelo = Column(String(100), nullable=False)
@@ -134,7 +134,7 @@ class Producto(Base):
 class Cotizacion(Base):
     __tablename__ = "cotizaciones"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     numero_cotizacion = Column(String(30), nullable=False, unique=True)
     cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id"), nullable=False)
     # vendedor_id es nullable: si el usuario se elimina, queda NULL pero se conserva
@@ -191,7 +191,7 @@ class PrecioHistorial(Base):
     eliminen o renombren después."""
     __tablename__ = "precio_historial"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     tipo = Column(String(10), nullable=False)  # 'producto' | 'servicio'
     # Referencias opcionales (ON DELETE SET NULL); el snapshot de abajo preserva
     # la información aunque estas filas desaparezcan.
@@ -211,7 +211,7 @@ class PrecioHistorial(Base):
 class CotizacionItem(Base):
     __tablename__ = "cotizacion_items"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     cotizacion_id = Column(UUID(as_uuid=True), ForeignKey("cotizaciones.id", ondelete="CASCADE"), nullable=False)
     producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id"), nullable=True)
     servicio_id = Column(UUID(as_uuid=True), ForeignKey("servicios.id"), nullable=True)
