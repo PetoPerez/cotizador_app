@@ -191,13 +191,11 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
               <div id="items-titulo" style="font-size:15px;font-weight:600">Productos</div>
               <div class="flex gap-8">
-                <!-- Solo en cotizaciones de Servicios de Lavandería: además de
-                     servicios se pueden cotizar equipos de otras empresas. -->
-                <button id="items-add-equipo-btn" class="btn btn-secondary btn-sm"
-                        style="display:none" onclick="agregarItem(false)">+ Agregar equipo</button>
-                <button id="items-add-adicional-btn" class="btn btn-secondary btn-sm"
-                        style="display:none" onclick="agregarAdicional()">+ Servicio adicional</button>
-                <button id="items-add-btn" class="btn btn-secondary btn-sm" onclick="agregarItem()">+ Agregar producto</button>
+                <!-- Botón principal: producto (empresa) o equipo de Supliese (SDL). -->
+                <button id="items-add-btn" class="btn btn-secondary btn-sm" onclick="agregarItem(false)">+ Agregar producto</button>
+                <!-- Servicios y flete disponibles en cualquier cotización. -->
+                <button id="items-add-servicio-btn" class="btn btn-secondary btn-sm" onclick="agregarItem(true)">+ Agregar servicio</button>
+                <button id="items-add-adicional-btn" class="btn btn-secondary btn-sm" onclick="agregarAdicional()">+ Servicio adicional</button>
               </div>
             </div>
             <div id="items-container">
@@ -471,22 +469,29 @@ function empresaOrigenDelItem(item) {
   return empresas.find(e => e.id === item.empresaOrigenId) || null;
 }
 
+// Devuelve el precio del ítem en la MONEDA BASE de la cotización (MXN en SDL,
+// USD en el resto), igual que guarda el backend. Servicios nativos MXN,
+// productos/equipos nativos USD; cada uno se convierte a la base.
 function precioListaItem(item) {
-  // Servicio adicional: precio capturado a mano, ya guardado en moneda interna (MXN).
+  const tc = tcActual();
+  const baseMXN = _internoEsMXN();  // base = MXN en SDL, USD en el resto
+  // Servicio adicional: ya guardado en la base (aInterno lo convirtió al capturar).
   if (item.esAdicional) return parseFloat(item.precioAdicional) || 0;
   const entidad = entidadDelItem(item);
   if (!entidad) return 0;
-  if (item.esServicio) return parseFloat(entidad.precio_unitario) || 0;  // MXN
-  // Equipo con empresa de origen (cotización SDL): el precio es el de esa
-  // empresa (guardado en USD). Se normaliza a MXN —base de las cotizaciones
-  // SDL— para que el total mezcle bien servicios (MXN) y equipos, igual que
-  // hace el backend al guardar. Usa el mismo tc que calcularTotales (tcReal).
-  if (item.empresaOrigenId) {
-    const pe = (entidad.empresas || []).find(x => x.empresa_id === item.empresaOrigenId && x.activo);
-    const usd = pe ? parseFloat(pe.precio_lista) : 0;
-    return usd * tcActual();
+  if (item.esServicio) {
+    const mxn = parseFloat(entidad.precio_unitario) || 0;
+    return baseMXN ? mxn : mxn / tc;          // MXN nativo → base
   }
-  return parseFloat(entidad.precio_lista) || 0;  // USD (cotización de otra empresa)
+  // Producto/equipo: precio nativo en USD.
+  let usd;
+  if (item.empresaOrigenId) {  // equipo SDL tomado de Supliese
+    const pe = (entidad.empresas || []).find(x => x.empresa_id === item.empresaOrigenId && x.activo);
+    usd = pe ? parseFloat(pe.precio_lista) : 0;
+  } else {
+    usd = parseFloat(entidad.precio_lista) || 0;
+  }
+  return baseMXN ? usd * tc : usd;            // USD nativo → base
 }
 
 // ─── Conversión a la moneda seleccionada ──────────────────
@@ -529,13 +534,10 @@ function actualizarLabelesItems() {
   const isSvc = esModoServicios();
   const titulo = document.getElementById('items-titulo');
   const btn = document.getElementById('items-add-btn');
-  const btnEq = document.getElementById('items-add-equipo-btn');
-  const btnAd = document.getElementById('items-add-adicional-btn');
-  if (titulo) titulo.textContent = isSvc ? 'Servicios y equipos' : 'Productos';
-  if (btn)    btn.textContent    = isSvc ? '+ Agregar servicio' : '+ Agregar producto';
-  // Equipos y servicios adicionales solo aplican a Servicios de Lavandería.
-  if (btnEq)  btnEq.style.display = isSvc ? '' : 'none';
-  if (btnAd)  btnAd.style.display = isSvc ? '' : 'none';
+  if (titulo) titulo.textContent = isSvc ? 'Servicios y equipos' : 'Productos y servicios';
+  // En SDL el botón principal agrega equipos (de Supliese); en el resto, productos.
+  // Los botones de servicio y flete están disponibles en cualquier cotización.
+  if (btn) btn.textContent = isSvc ? '+ Agregar equipo' : '+ Agregar producto';
 }
 
 // ─── Inicialización ───────────────────────────────────────

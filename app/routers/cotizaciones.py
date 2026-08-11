@@ -126,6 +126,20 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
         db.add(cotizacion)
         db.flush()
 
+        # Moneda base interna de la cotización: Servicios de Lavandería trabaja en
+        # MXN; las demás empresas en USD. Cada ítem se guarda en esta base, sin
+        # importar su moneda nativa, para que el PDF (que multiplica por un solo
+        # tipo de cambio) muestre todo coherente. Así una cotización de equipos
+        # puede incluir servicios (MXN) y flete, y una de SDL incluir equipos (USD).
+        base_mxn = (empresa.codigo == 'servicios_lavanderia')
+        tcf = float(tc) if tc else 1.0
+
+        def a_base(precio, moneda_origen):
+            precio = float(precio)
+            if base_mxn:
+                return precio * tcf if moneda_origen == 'USD' else precio
+            return precio / tcf if moneda_origen == 'MXN' else precio
+
         subtotal = 0.0
         for item_data in data.items:
             # Un ítem es producto, servicio o "servicio adicional" (variable, sin
@@ -141,18 +155,14 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             ajuste = item_data.porcentaje_ajuste
 
             if es_adicional:
-                # Servicio adicional: ítem variable capturado a mano. Solo en SDL.
-                if empresa.codigo != 'servicios_lavanderia':
-                    raise HTTPException(status_code=400, detail="Los servicios adicionales solo aplican a Servicios de Lavandería")
+                # Servicio adicional (flete, maniobras...): ítem variable capturado
+                # a mano. Disponible en cualquier cotización.
                 if not (item_data.descripcion_libre or '').strip():
                     raise HTTPException(status_code=400, detail="El servicio adicional requiere una descripción")
                 if item_data.precio_unitario is None or item_data.precio_unitario <= 0:
                     raise HTTPException(status_code=400, detail="El servicio adicional requiere un precio mayor a cero")
-                # Capturado en la moneda mostrada; SDL trabaja en MXN, así que se
-                # normaliza a MXN si la cotización está en USD (como los equipos).
-                precio_lista_emp = float(item_data.precio_unitario)
-                if data.moneda == 'USD' and tc:
-                    precio_lista_emp *= float(tc)
+                # Capturado en la moneda mostrada; se lleva a la base de la cotización.
+                precio_lista_emp = a_base(item_data.precio_unitario, data.moneda)
                 ajuste = 0.0  # precio fijo capturado, sin margen
             elif item_data.producto_id:
                 producto = db.query(models.Producto).filter(
@@ -200,14 +210,9 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                         status_code=400,
                         detail=f"El producto {producto.modelo} no está disponible en la empresa {empresa_precio.nombre}"
                     )
-                precio_lista_emp = float(pe.precio_lista)
-                # Los precios de producto_empresa están en USD. Una cotización de
-                # Servicios de Lavandería trabaja en MXN (sus servicios están en
-                # MXN), así que el equipo se normaliza a MXN para que servicios y
-                # equipos convivan en la misma moneda; de lo contrario el PDF
-                # mostraría el número en USD con etiqueta MXN (subvaluado).
-                if empresa.codigo == 'servicios_lavanderia' and tc:
-                    precio_lista_emp *= float(tc)
+                # Los precios de producto_empresa están en USD; se llevan a la
+                # base de la cotización (× tc si la base es MXN, como en SDL).
+                precio_lista_emp = a_base(pe.precio_lista, 'USD')
             else:
                 servicio = db.query(models.Servicio).filter(
                     models.Servicio.id == item_data.servicio_id,
@@ -215,10 +220,8 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 ).first()
                 if not servicio:
                     raise HTTPException(status_code=404, detail=f"Servicio {item_data.servicio_id} no encontrado")
-                # Servicios solo aplican a empresa Servicios de Lavandería
-                if empresa.codigo != 'servicios_lavanderia':
-                    raise HTTPException(status_code=400, detail="Los servicios solo pueden cotizarse en Servicios de Lavandería")
-                precio_lista_emp = float(servicio.precio_unitario)
+                # Los servicios están en MXN; se llevan a la base (÷ tc si base USD).
+                precio_lista_emp = a_base(servicio.precio_unitario, 'MXN')
 
             # Validar rango de ajuste (no aplica a servicios adicionales: su
             # precio es fijo y capturado, sin margen).

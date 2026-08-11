@@ -233,10 +233,22 @@ r = crear(h_sdl, ["servicios_lavanderia"], [
 check("SDL: servicio + equipo + adicional en una cotización (3 ítems)",
       r.status_code == 200 and len(r.json()[0]["items"]) == 3, f"{r.status_code} {r.text[:180]}")
 
-# 13) Servicio adicional NO permitido fuera de SDL (vendedor CLM).
+# 13) Servicio adicional (flete) SÍ permitido fuera de SDL (cotización CLM en USD).
+#     500 capturado en USD queda tal cual (base USD). El servicio (MXN) se convierte.
 r = crear(h_clm, ["clm"], [
-    {"descripcion_libre": "Flete", "precio_unitario": 500, "cantidad": 1, "porcentaje_ajuste": 0}])
-check("Adicional fuera de SDL -> 400", r.status_code == 400, f"{r.status_code} {r.text[:160]}")
+    {"producto_id": IDS["prod"], "cantidad": 1, "porcentaje_ajuste": 0},
+    {"servicio_id": IDS["svc"], "cantidad": 1, "porcentaje_ajuste": 0},
+    {"descripcion_libre": "Flete", "precio_unitario": 500, "cantidad": 1, "porcentaje_ajuste": 0}],
+    moneda="USD", tc=18)
+if r.status_code == 200:
+    its = {("prod" if i["producto_id"] else "svc" if i["servicio_id"] else "flete"): i
+           for i in r.json()[0]["items"]}
+    check("CLM (USD) admite producto + servicio + flete",
+          len(its) == 3 and its["flete"]["precio_lista"] == 500.0
+          and round(its["svc"]["precio_lista"], 2) == round(500.0 / 18, 2),  # svc 500 MXN -> USD
+          str({k: v["precio_lista"] for k, v in its.items()}))
+else:
+    check("CLM admite producto + servicio + flete", False, f"{r.status_code} {r.text[:160]}")
 
 # 14) Adicional sin descripción / sin precio -> 400.
 r = crear(h_sdl, ["servicios_lavanderia"], [

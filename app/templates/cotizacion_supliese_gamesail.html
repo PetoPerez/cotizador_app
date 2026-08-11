@@ -331,6 +331,7 @@ body {
 
   <!-- ── PRODUCTOS ── -->
   {% for item in cot.items %}
+  {% if item.producto %}
   {% set img = (item.producto.imagenes[0].url if item.producto.imagenes else item.producto.imagen_url) %}
   <div class="prod-section">
 
@@ -382,6 +383,34 @@ body {
     </div>
 
   </div>
+  {% else %}
+  {# Servicio o servicio adicional (flete): renglón simple, sin imagen. #}
+  <div class="prod-section">
+    <div class="prod-keep">
+      <table class="prod-table">
+        <thead>
+          <tr><th>Cantidad</th><th>Clave</th><th>Precio</th><th>Importe</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ item.cantidad }}</td>
+            <td>{% if item.servicio %}{{ item.servicio.nombre }}{% else %}{{ item.descripcion_libre }}{% endif %}</td>
+            <td>${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}</td>
+            <td>${{ "{:,.2f}".format(float(item.importe) * tc) }} {{ moneda }}</td>
+          </tr>
+        </tbody>
+      </table>
+      {% if item.servicio %}
+      <div class="char-head">
+        <span class="char-title">{% if item.servicio.tipo == 'puesta_en_marcha' %}Puesta en marcha{% elif item.servicio.tipo == 'otro' %}Servicio{% else %}Mantenimiento{% endif %}:</span>
+        {%- if item.servicio.descripcion %} <span class="char-equip">{{ item.servicio.descripcion }}</span>{% endif %}
+      </div>
+      {% elif item.descripcion_libre %}
+      <div class="char-head"><span class="char-title">Servicio adicional</span></div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
   {% endfor %}
 
   <!-- ── PRESUPUESTO FINAL ── -->
