@@ -269,6 +269,11 @@ function previewImportModal(data) {
          <div style="max-height:120px;overflow-y:auto;font-size:12px;color:var(--danger)">
            ${data.errores.map(x => `<div>• ${x}</div>`).join('')}</div></div>` : '';
 
+    const listaAdvert = (data.advertencias || []).length
+      ? `<div style="margin-top:12px"><div style="font-size:12px;font-weight:600;color:var(--warning,#d98a00);margin-bottom:4px">⚠ Advertencias (revisa antes de confirmar)</div>
+         <div style="max-height:120px;overflow-y:auto;font-size:12px;color:var(--warning,#d98a00)">
+           ${data.advertencias.map(x => `<div>• ${x}</div>`).join('')}</div></div>` : '';
+
     const nota = hayQueHacer ? '' :
       `<div style="margin-top:12px;font-size:12px;color:var(--text3)">No hay nada nuevo ni cambios que aplicar.</div>`;
 
@@ -284,8 +289,9 @@ function previewImportModal(data) {
           ${chip('A actualizar', r.actualizar, 'var(--accent)')}
           ${chip('Sin cambios', r.sin_cambios, 'var(--text2)')}
           ${chip('Errores', r.errores, 'var(--danger)')}
+          ${(r.advertencias || 0) ? chip('Advertencias', r.advertencias, 'var(--warning,#d98a00)') : ''}
         </div>
-        ${listaErr}${listaAct}${listaNuevos}${nota}
+        ${listaAdvert}${listaErr}${listaAct}${listaNuevos}${nota}
         <div class="flex gap-8 mt-16" style="justify-content:flex-end">
           <button class="btn btn-secondary" id="imp-cancelar">Cancelar</button>
           <button class="btn btn-primary" id="imp-confirmar" ${hayQueHacer ? '' : 'disabled'}>

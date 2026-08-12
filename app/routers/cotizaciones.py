@@ -242,18 +242,20 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 empresa_origen_id=empresa_origen_id,
                 descripcion_libre=item_data.descripcion_libre,
                 cantidad=item_data.cantidad,
-                precio_lista=precio_lista_emp,
+                # 4 decimales en la moneda base: al reconvertir a la moneda
+                # mostrada, el PDF (que formatea a 2) no arrastra el centavo.
+                precio_lista=round(precio_lista_emp, 4),
                 porcentaje_ajuste=ajuste,
-                precio_final=round(precio_final, 2),
-                importe=round(importe, 2),
+                precio_final=round(precio_final, 4),
+                importe=round(importe, 4),
             )
             db.add(item)
             subtotal += importe
 
         iva = subtotal * (settings.IVA_PORCENTAJE / 100)
-        cotizacion.subtotal = round(subtotal, 2)
-        cotizacion.iva = round(iva, 2)
-        cotizacion.total = round(subtotal + iva, 2)
+        cotizacion.subtotal = round(subtotal, 4)
+        cotizacion.iva = round(iva, 4)
+        cotizacion.total = round(subtotal + iva, 4)
         cotizaciones_creadas.append(cotizacion)
 
     db.commit()

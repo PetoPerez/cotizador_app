@@ -20,6 +20,25 @@ _TIPO_ALIAS = {
     "otro": "otro", "otros": "otro",
 }
 
+# Palabras que delatan una descripción real de servicio (no un modelo/clave).
+_PALABRAS_SERVICIO = ("servicio", "mantenimiento", "configuraci", "limpieza",
+                      "revisi", "ajuste", "garant", "instalaci", "puesta",
+                      "capacitaci", "inspecci", "verificaci", "lubricaci",
+                      "diseñado", "incluye")
+
+
+def _desc_parece_modelo(desc) -> bool:
+    """Heurística: la descripción parece un modelo/clave, no una descripción de
+    servicio (síntoma de columnas corridas en el Excel). True si es corta y no
+    contiene lenguaje de servicio."""
+    d = (desc or "").strip()
+    if not d:
+        return False
+    dl = d.lower()
+    if any(w in dl for w in _PALABRAS_SERVICIO):
+        return False
+    return len(d) <= 35
+
 
 def _require_sdl_o_admin(user: models.Usuario, db: Session):
     """Solo admin o vendedor asignado a Servicios de Lavandería pueden gestionar."""
@@ -177,7 +196,7 @@ def importar_servicios(
         except (ValueError, TypeError):
             return None
 
-    nuevos, actualizar, errores = [], [], []
+    nuevos, actualizar, errores, advertencias = [], [], [], []
     sin_cambios = 0
     for n, row in enumerate(rows[1:], start=2):
         nombre = str(cel(row, "nombre") or "").strip()
@@ -195,6 +214,12 @@ def importar_servicios(
                            f"(usa mantenimiento, puesta_en_marcha u otro)"); continue
         if precio is None:
             errores.append(f"Fila {n} ({nombre}): precio inválido o vacío"); continue
+
+        # Aviso (no bloquea): la descripción parece un modelo, no un servicio.
+        if _desc_parece_modelo(desc):
+            advertencias.append(
+                f"Fila {n} ({nombre}): la descripción {desc!r} parece un modelo, "
+                f"no una descripción de servicio. ¿Están corridas las columnas?")
 
         ref = f"{nombre} [{tipo}]"
         existente = (db.query(models.Servicio)
@@ -218,12 +243,14 @@ def importar_servicios(
                            "precio": precio, "referencia": ref})
 
     resumen = {"nuevos": len(nuevos), "actualizar": len(actualizar),
-               "sin_cambios": sin_cambios, "errores": len(errores)}
+               "sin_cambios": sin_cambios, "errores": len(errores),
+               "advertencias": len(advertencias)}
     preview = {
         "resumen": resumen,
         "nuevos": [f"{x['referencia']} — {x['precio']:,.2f}" for x in nuevos[:100]],
         "actualizar": [{"item": x["referencia"], "cambios": x["cambios"]} for x in actualizar[:100]],
         "errores": errores[:100],
+        "advertencias": advertencias[:100],
     }
 
     if not confirmar:

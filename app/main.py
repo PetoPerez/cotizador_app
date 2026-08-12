@@ -179,6 +179,26 @@ def on_startup():
             "VARCHAR(20) NOT NULL DEFAULT 'mantenimiento'"
         ))
 
+        # ── Montos de cotización a 4 decimales (evita centavo de redondeo al
+        #    reconvertir desde la moneda base). Solo altera si la precisión
+        #    difiere, para no reescribir la tabla en cada arranque. ──
+        def _ensure_numeric(tabla, col, prec, esc):
+            row = conn.execute(text(
+                "SELECT numeric_precision, numeric_scale FROM information_schema.columns "
+                "WHERE table_name = :t AND column_name = :c"
+            ), {"t": tabla, "c": col}).first()
+            if row and (row[0], row[1]) != (prec, esc):
+                conn.execute(text(
+                    f"ALTER TABLE {tabla} ALTER COLUMN {col} TYPE NUMERIC({prec},{esc})"
+                ))
+
+        _ensure_numeric("cotizaciones", "subtotal", 16, 4)
+        _ensure_numeric("cotizaciones", "iva", 16, 4)
+        _ensure_numeric("cotizaciones", "total", 16, 4)
+        _ensure_numeric("cotizacion_items", "precio_lista", 14, 4)
+        _ensure_numeric("cotizacion_items", "precio_final", 14, 4)
+        _ensure_numeric("cotizacion_items", "importe", 16, 4)
+
         # ── Equipos de otras empresas en cotizaciones de Servicios de Lavandería ──
         # El precio vive en producto_empresa; esta columna guarda de qué empresa
         # se tomó, para que el precio_lista del ítem sea trazable.

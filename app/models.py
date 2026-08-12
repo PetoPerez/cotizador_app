@@ -150,9 +150,12 @@ class Cotizacion(Base):
     vendedor_telefono = Column(String(30))
     estado = Column(String(20), nullable=False, default="borrador")
     notas = Column(Text)
-    subtotal = Column(Numeric(14, 2), nullable=False, default=0)
-    iva = Column(Numeric(14, 2), nullable=False, default=0)
-    total = Column(Numeric(14, 2), nullable=False, default=0)
+    # 4 decimales: los montos se guardan en la moneda base (USD/MXN) y el PDF
+    # convierte a la moneda mostrada; con solo 2 decimales el redondeo del valor
+    # base introducía un centavo de error al reconvertir. El display sigue en 2.
+    subtotal = Column(Numeric(16, 4), nullable=False, default=0)
+    iva = Column(Numeric(16, 4), nullable=False, default=0)
+    total = Column(Numeric(16, 4), nullable=False, default=0)
     fecha = Column(DateTime(timezone=True), default=now_utc)
     vigencia = Column(DateTime(timezone=True))
     moneda = Column(String(3), nullable=False, default='MXN')
@@ -225,10 +228,11 @@ class CotizacionItem(Base):
     empresa_origen_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="SET NULL"), nullable=True)
     descripcion_libre = Column(Text)
     cantidad = Column(Integer, nullable=False)
-    precio_lista = Column(Numeric(12, 2), nullable=False)
+    # 4 decimales: montos en moneda base (ver Cotizacion.subtotal). Display en 2.
+    precio_lista = Column(Numeric(14, 4), nullable=False)
     porcentaje_ajuste = Column(Numeric(5, 2), nullable=False, default=0)
-    precio_final = Column(Numeric(12, 2), nullable=False)
-    importe = Column(Numeric(14, 2), nullable=False)
+    precio_final = Column(Numeric(14, 4), nullable=False)
+    importe = Column(Numeric(16, 4), nullable=False)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
     cotizacion = relationship("Cotizacion", back_populates="items")
