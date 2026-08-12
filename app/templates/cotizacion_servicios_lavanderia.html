@@ -576,7 +576,7 @@ body {
                 <td class="col-desc">{{ item.descripcion_libre or '' }}</td>
             {% endif %}
             <td class="col-cant">{{ item.cantidad }}</td>
-            <td class="col-uni">${{ "{:,.2f}".format(float(item.precio_final) * tc) }}</td>
+            <td class="col-uni">${{ "{:,.2f}".format(float(item.precio_final) * tc) }}{% if item.descuento_pct and float(item.descuento_pct) > 0 %}<br><span style="font-size:7px;color:#6b7280">Desc. {{ "{:g}".format(float(item.descuento_pct)) }}%</span>{% endif %}</td>
             <td class="col-imp">${{ "{:,.2f}".format(float(item.importe) * tc) }}</td>
         </tr>
         {# Imagen de referencia del equipo (solo productos con imagen). #}

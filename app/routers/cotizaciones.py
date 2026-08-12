@@ -233,7 +233,10 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 )
 
             precio_final = precio_lista_emp * (1 + ajuste / 100)
-            importe = precio_final * item_data.cantidad
+            # Descuento por renglón (póliza de garantía): tope 15% y solo en SDL.
+            descuento_item = float(item_data.descuento_pct) if empresa.codigo == 'servicios_lavanderia' else 0.0
+            descuento_item = max(0.0, min(15.0, descuento_item))
+            importe = precio_final * item_data.cantidad * (1 - descuento_item / 100)
 
             item = models.CotizacionItem(
                 cotizacion_id=cotizacion.id,
@@ -247,6 +250,7 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 precio_lista=round(precio_lista_emp, 4),
                 porcentaje_ajuste=ajuste,
                 precio_final=round(precio_final, 4),
+                descuento_pct=descuento_item,
                 importe=round(importe, 4),
             )
             db.add(item)
@@ -255,6 +259,7 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
         # Descuento de póliza de garantía: se aplica sobre el subtotal antes del
         # IVA y solo en cotizaciones de Servicios de Lavandería.
         descuento_pct = float(data.descuento_pct) if empresa.codigo == 'servicios_lavanderia' else 0.0
+        descuento_pct = max(0.0, min(15.0, descuento_pct))
         base_gravable = subtotal * (1 - descuento_pct / 100)
         iva = base_gravable * (settings.IVA_PORCENTAJE / 100)
         cotizacion.subtotal = round(subtotal, 4)          # subtotal original (antes del descuento)

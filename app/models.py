@@ -235,6 +235,9 @@ class CotizacionItem(Base):
     precio_lista = Column(Numeric(14, 4), nullable=False)
     porcentaje_ajuste = Column(Numeric(5, 2), nullable=False, default=0)
     precio_final = Column(Numeric(14, 4), nullable=False)
+    # Descuento (%) de este renglón, tope 15% (póliza de garantía en SDL). El
+    # importe ya viene con el descuento aplicado.
+    descuento_pct = Column(Numeric(5, 2), nullable=False, default=0, server_default=text("0"))
     importe = Column(Numeric(16, 4), nullable=False)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 

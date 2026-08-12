@@ -268,15 +268,20 @@
                      style="font-family:'DM Mono',monospace;font-size:13px">
             </div>
 
-            <!-- Descuento de póliza de garantía: solo Servicios de Lavandería -->
-            <label id="descuento-group" style="display:none;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;font-size:13px">
-              <input type="checkbox" id="chk-descuento" onchange="calcularTotales()">
-              Descuento póliza de garantía (15%)
-            </label>
+            <!-- Descuento de póliza de garantía general: solo Servicios de Lavandería -->
+            <div id="descuento-group" style="display:none;margin-bottom:8px">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+                Descuento póliza de garantía general
+                <input type="number" id="inp-descuento" min="0" max="15" step="0.5" value="0"
+                       oninput="calcularTotales()"
+                       style="width:64px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;color:var(--text);font-size:13px;text-align:right"> %
+              </label>
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">Tope 15%. También puedes descontar renglones individuales (campo "Desc %" en cada ítem).</div>
+            </div>
 
             <div class="totales-box">
               <div class="totales-row"><span>Subtotal</span><span id="r-subtotal">$0.00</span></div>
-              <div class="totales-row" id="r-descuento-row" style="display:none"><span>Descuento póliza (15%)</span><span id="r-descuento">-$0.00</span></div>
+              <div class="totales-row" id="r-descuento-row" style="display:none"><span id="r-descuento-lbl">Descuento póliza</span><span id="r-descuento">-$0.00</span></div>
               <div class="totales-row"><span>IVA (16%)</span><span id="r-iva">$0.00</span></div>
               <div class="totales-row"><span>Total</span><span id="r-total">$0.00</span></div>
             </div>
@@ -536,6 +541,38 @@ function fmtMon(interno) {
   return formatCurrency(aMonedaMostrada(interno), monedaSeleccionada, 1);
 }
 
+// Descuento del renglón (0–15%), solo aplica en Servicios de Lavandería.
+function descuentoItem(item) {
+  if (!esModoServicios()) return 0;
+  return Math.max(0, Math.min(15, parseFloat(item.descuento) || 0));
+}
+
+// Input "Desc %" para el renglón (solo SDL); cadena vacía en el resto.
+function descuentoInputHTML(item, i) {
+  if (!esModoServicios()) return '';
+  return `<label style="display:flex;align-items:center;gap:4px;margin:0" title="Descuento del renglón (tope 15%)">
+    <span style="font-size:11px;color:var(--text3);white-space:nowrap">Desc %</span>
+    <input type="number" id="desc-item-${i}" min="0" max="15" step="0.5" value="${descuentoItem(item)}"
+           oninput="cambiarDescuentoItem(${i}, this.value)"
+           style="width:54px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 6px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;text-align:right;outline:none">
+  </label>`;
+}
+
+function cambiarDescuentoItem(i, val) {
+  let d = parseFloat(val);
+  items[i].descuento = isNaN(d) ? 0 : Math.max(0, Math.min(15, d));
+  const row = document.getElementById(`item-row-${i}`);
+  if (row) {
+    const preview = row.querySelector('.precio-preview .final');
+    if (preview) {
+      const pl = precioListaItem(items[i]);
+      const imp = pl * (1 + (items[i].ajuste || 0) / 100) * items[i].cantidad * (1 - descuentoItem(items[i]) / 100);
+      preview.textContent = fmtMon(imp);
+    }
+  }
+  calcularTotales();
+}
+
 function actualizarLabelesItems() {
   // Actualiza el título del card y los botones
   const isSvc = esModoServicios();
@@ -548,8 +585,8 @@ function actualizarLabelesItems() {
   // El descuento de póliza de garantía solo aplica a SDL.
   const descGroup = document.getElementById('descuento-group');
   if (descGroup) {
-    descGroup.style.display = isSvc ? 'flex' : 'none';
-    if (!isSvc) { const chk = document.getElementById('chk-descuento'); if (chk) chk.checked = false; }
+    descGroup.style.display = isSvc ? 'block' : 'none';
+    if (!isSvc) { const inp = document.getElementById('inp-descuento'); if (inp) inp.value = 0; }
   }
 }
 
@@ -691,7 +728,11 @@ function actualizarTipoCambio() {
   const val = parseFloat(document.getElementById('tipo-cambio-input').value);
   if (!isNaN(val) && val > 0) {
     tipoCambioEditable = val;
-    calcularTotales();
+    // Re-renderiza los renglones (no solo los totales) para que el nuevo tipo de
+    // cambio se refleje también en el importe de cada ítem (equipos en SDL y
+    // servicios en cotizaciones USD). El input del tc queda fuera de la lista,
+    // así que no pierde el foco.
+    renderItems();
   }
 }
 
@@ -762,7 +803,7 @@ function resetNueva() {
   document.getElementById('f-notas').value = '';
   document.getElementById('f-ciudad-entrega').value = '';
   document.querySelectorAll('.chk-tiempo').forEach(c => c.checked = false);
-  const chkDesc = document.getElementById('chk-descuento'); if (chkDesc) chkDesc.checked = false;
+  const inpDesc = document.getElementById('inp-descuento'); if (inpDesc) inpDesc.value = 0;
   cargarTipoCambioAPI();
   setMoneda('USD');
   renderItems();
@@ -817,6 +858,7 @@ function agregarItem(esServicio) {
     esServicio: svc,
     cantidad: 1,
     ajuste: 0,
+    descuento: 0,   // descuento por renglón (0–15%, solo SDL)
     margenMin: user.margen_min ?? -10,
     margenMax: user.margen_max ?? 10,
   });
@@ -837,12 +879,13 @@ function agregarAdicional() {
     precioAdicional: 0,   // interno (MXN)
     cantidad: 1,
     ajuste: 0,
+    descuento: 0,   // descuento por renglón (0–15%, solo SDL)
   });
   renderItems();
 }
 
 function renderAdicionalRow(item, i) {
-  const importeInterno = precioListaItem(item) * item.cantidad;
+  const importeInterno = precioListaItem(item) * item.cantidad * (1 - descuentoItem(item) / 100);
   const descEsc = (item.descripcion || '').replace(/"/g, '&quot;');
   return `
     <div class="item-row" id="item-row-${i}">
@@ -870,6 +913,7 @@ function renderAdicionalRow(item, i) {
                         font-size:13px;width:120px;outline:none;text-align:right"
                  oninput="cambiarPrecioAdicional(${i}, this.value)">
         </label>
+        ${descuentoInputHTML(item, i)}
         <span class="final">${fmtMon(importeInterno)}</span>
       </div>
     </div>`;
@@ -885,7 +929,7 @@ function cambiarPrecioAdicional(i, val) {
   const row = document.getElementById(`item-row-${i}`);
   if (row) {
     const preview = row.querySelector('.precio-preview .final');
-    if (preview) preview.textContent = fmtMon(precioListaItem(items[i]) * items[i].cantidad);
+    if (preview) preview.textContent = fmtMon(precioListaItem(items[i]) * items[i].cantidad * (1 - descuentoItem(items[i]) / 100));
   }
   calcularTotales();
 }
@@ -903,7 +947,7 @@ function renderItems() {
     const entidad = entidadDelItem(item);
     const precioLista = precioListaItem(item);
     const precioFinal = precioLista * (1 + item.ajuste / 100);
-    const importe = precioFinal * item.cantidad;
+    const importe = precioFinal * item.cantidad * (1 - descuentoItem(item) / 100);
     const label = item.esServicio ? 'Servicio' : (esModoServicios() ? 'Equipo' : 'Producto');
     const placeholder = item.esServicio ? 'Buscar servicio por nombre...' : 'Buscar por marca, equipo o modelo...';
     // En SDL el precio depende de la empresa de origen: se muestra para que el
@@ -973,6 +1017,7 @@ function renderItems() {
                    onfocus="this.style.borderColor='var(--accent)'"
                    onblur="normalizarPrecio(${i})">
           </label>
+          ${descuentoInputHTML(item, i)}
           <span class="final">${fmtMon(importe)}</span>
         </div>
       </div>` : ''}
@@ -1112,7 +1157,7 @@ function cambiarAjuste(i, val) {
   if (!entidad) return;
   const precioLista = precioListaItem(items[i]);
   const precioFinal = precioLista * (1 + items[i].ajuste / 100);
-  const importe = precioFinal * items[i].cantidad;
+  const importe = precioFinal * items[i].cantidad * (1 - descuentoItem(items[i]) / 100);
   const row = document.getElementById(`item-row-${i}`);
   if (!row) return;
   const sliderVal   = row.querySelector('.slider-val');
@@ -1148,7 +1193,7 @@ function cambiarPrecioManual(i, val) {
   const precioInput = document.getElementById(`precio-unit-${i}`);
 
   const precioReal = precioLista * (1 + ajuste / 100);
-  const importe    = precioReal * items[i].cantidad;
+  const importe    = precioReal * items[i].cantidad * (1 - descuentoItem(items[i]) / 100);
 
   if (slider)    slider.value           = ajuste;
   if (sliderVal) sliderVal.textContent  = (ajuste >= 0 ? '+' : '') + ajuste + '%';
@@ -1178,21 +1223,25 @@ function calcularTotales() {
     // Los servicios adicionales no tienen entidad de catálogo pero sí cuentan.
     if (!item.esAdicional && !entidadDelItem(item)) return;
     const precioFinal = precioListaItem(item) * (1 + item.ajuste / 100);
-    subtotal += precioFinal * item.cantidad;
+    // Descuento por renglón (solo SDL) sobre el importe de la línea.
+    subtotal += precioFinal * item.cantidad * (1 - descuentoItem(item) / 100);
   });
-  // Descuento de póliza de garantía (15%, solo SDL) sobre el subtotal antes del IVA.
-  const chkDesc = document.getElementById('chk-descuento');
-  const aplicaDesc = descuentoDisponible() && chkDesc && chkDesc.checked;
-  const descuento = aplicaDesc ? subtotal * 0.15 : 0;
-  const baseGravable = subtotal - descuento;
+  // Descuento general de póliza de garantía (0–15%, solo SDL) sobre el subtotal.
+  const descGeneral = descuentoDisponible() ? _descuentoGeneral() : 0;
+  const montoDescGeneral = subtotal * descGeneral / 100;
+  const baseGravable = subtotal - montoDescGeneral;
   const iva = baseGravable * 0.16;
   const total = baseGravable + iva;
 
   document.getElementById('r-subtotal').textContent = fmtMon(subtotal);
   const descRow = document.getElementById('r-descuento-row');
   if (descRow) {
-    descRow.style.display = aplicaDesc ? '' : 'none';
-    if (aplicaDesc) document.getElementById('r-descuento').textContent = '-' + fmtMon(descuento);
+    const mostrar = descGeneral > 0;
+    descRow.style.display = mostrar ? '' : 'none';
+    if (mostrar) {
+      document.getElementById('r-descuento-lbl').textContent = `Descuento póliza (${_fmtPct(descGeneral)}%)`;
+      document.getElementById('r-descuento').textContent = '-' + fmtMon(montoDescGeneral);
+    }
   }
   document.getElementById('r-iva').textContent      = fmtMon(iva);
   document.getElementById('r-total').textContent    = fmtMon(total);
@@ -1201,6 +1250,16 @@ function calcularTotales() {
 // El descuento de póliza de garantía solo aplica a Servicios de Lavandería.
 function descuentoDisponible() {
   return esModoServicios();
+}
+
+// Valor del descuento general capturado (0–15%).
+function _descuentoGeneral() {
+  const inp = document.getElementById('inp-descuento');
+  return Math.max(0, Math.min(15, parseFloat(inp && inp.value) || 0));
+}
+
+function _fmtPct(v) {
+  return (Math.round(v * 100) / 100).toString();
 }
 
 // ─── Generar cotización ───────────────────────────────────
@@ -1224,9 +1283,8 @@ async function generarCotizacion() {
       if (sel) tiempoEntrega = sel.value;
     }
 
-    // Descuento de póliza de garantía (15%): solo si es SDL y está marcado.
-    const chkDesc = document.getElementById('chk-descuento');
-    const descuentoPct = (descuentoDisponible() && chkDesc && chkDesc.checked) ? 15 : 0;
+    // Descuento general de póliza de garantía (0–15%): solo si es SDL.
+    const descuentoPct = descuentoDisponible() ? _descuentoGeneral() : 0;
 
     const body = {
       cliente_id: clienteId,
@@ -1246,6 +1304,7 @@ async function generarCotizacion() {
         precio_unitario: i.esAdicional ? aMonedaMostrada(i.precioAdicional) : null,
         cantidad: i.cantidad,
         porcentaje_ajuste: i.esAdicional ? 0 : i.ajuste,
+        descuento_pct: descuentoItem(i),
       })),
     };
     const cotizaciones = await apiFetch('/cotizaciones/', { method: 'POST', body: JSON.stringify(body) });
