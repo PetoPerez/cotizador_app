@@ -226,6 +226,10 @@ body {
 .col-cant  { width: 6%;  text-align: center; }
 .col-uni   { width: 14%; text-align: right; }
 .col-imp   { width: 18%; text-align: right; font-weight: 700; }
+/* Fila con la imagen de referencia del equipo: pegada a su renglón (sin borde
+   superior) y con la primera celda vacía para alinear bajo MARCA. */
+.equipo-img td { border-top: none; padding: 4px 6px 8px; }
+.equipo-img td:first-child { border-right: none; }
 
 /* ─── BLOQUE TRIPLE: ALCANCE + CONDICIONES + TOTALES ── */
 .triple {
@@ -575,6 +579,19 @@ body {
             <td class="col-uni">${{ "{:,.2f}".format(float(item.precio_final) * tc) }}</td>
             <td class="col-imp">${{ "{:,.2f}".format(float(item.importe) * tc) }}</td>
         </tr>
+        {# Imagen de referencia del equipo (solo productos con imagen). #}
+        {% if item.producto %}
+        {% set _img = (item.producto.imagenes[0].url if item.producto.imagenes else item.producto.imagen_url) %}
+        {% if _img %}
+        <tr class="equipo-img">
+            <td></td>
+            <td colspan="6">
+                <img src="{{ _img }}" alt="{{ item.producto.modelo }}"
+                     style="max-height:95px;max-width:170px;object-fit:contain">
+            </td>
+        </tr>
+        {% endif %}
+        {% endif %}
         {% endfor %}
     </tbody>
 </table>
