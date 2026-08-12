@@ -8,9 +8,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     IVA_PORCENTAJE: float = 16.0
 
-    # Orígenes permitidos en CORS, separados por coma.
-    # En Railway ponlo como: https://tu-app.railway.app
-    ALLOWED_ORIGINS: str = "*"
+    # Orígenes permitidos en CORS, separados por coma. Por defecto el dominio de
+    # producción. Frontend y API viven en el mismo origen, así que esto solo
+    # impide que OTROS sitios llamen la API desde el navegador. Sobreescribible
+    # con la variable de entorno ALLOWED_ORIGINS (p. ej. al agregar dominio propio).
+    ALLOWED_ORIGINS: str = "https://cotizadorapp-production.up.railway.app"
 
     # Datos de la empresa para el PDF de cotización
     EMPRESA_NOMBRE: str = "Tu Empresa S.A. de C.V."

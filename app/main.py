@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.routing import APIRouter
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
@@ -233,6 +233,23 @@ def on_startup():
             "ON precio_historial (producto_id)"
         ))
 
+        # ── Índices de rendimiento (Postgres no indexa las FKs solo) ──
+        # Idempotentes (IF NOT EXISTS); en tablas chicas se crean al instante.
+        for _idx_sql in (
+            "CREATE INDEX IF NOT EXISTS ix_cotizaciones_vendedor ON cotizaciones (vendedor_id)",
+            "CREATE INDEX IF NOT EXISTS ix_cotizaciones_created ON cotizaciones (created_at)",
+            "CREATE INDEX IF NOT EXISTS ix_cotizacion_items_cotizacion ON cotizacion_items (cotizacion_id)",
+            "CREATE INDEX IF NOT EXISTS ix_cotizacion_items_producto ON cotizacion_items (producto_id)",
+            "CREATE INDEX IF NOT EXISTS ix_cotizacion_items_servicio ON cotizacion_items (servicio_id)",
+            "CREATE INDEX IF NOT EXISTS ix_producto_empresa_empresa ON producto_empresa (empresa_id)",
+            "CREATE INDEX IF NOT EXISTS ix_productos_activo ON productos (activo)",
+            "CREATE INDEX IF NOT EXISTS ix_productos_mem ON productos (marca, equipo, modelo)",
+            "CREATE INDEX IF NOT EXISTS ix_servicios_activo ON servicios (activo)",
+            "CREATE INDEX IF NOT EXISTS ix_servicios_tipo ON servicios (tipo)",
+            "CREATE INDEX IF NOT EXISTS ix_servicios_nombre_lower ON servicios (lower(nombre))",
+        ):
+            conn.execute(text(_idx_sql))
+
         conn.commit()
 
 _origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
@@ -252,7 +269,21 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # HSTS: el navegador usa siempre HTTPS (Railway sirve solo HTTPS).
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+
+@app.get("/health", include_in_schema=False)
+def health():
+    """Chequeo de salud para el monitoreo de Railway: verifica que la app
+    responde y que la base de datos está accesible."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "db_error"})
 
 # ── API bajo /api ────────────────────────────────────────────
 api = APIRouter(prefix="/api")
