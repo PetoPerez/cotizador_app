@@ -41,8 +41,8 @@ def _desc_parece_modelo(desc) -> bool:
 
 
 def _require_sdl_o_admin(user: models.Usuario, db: Session):
-    """Solo admin o vendedor asignado a Servicios de Lavandería pueden gestionar."""
-    if user.rol == "admin":
+    """Solo admin/superadmin o vendedor asignado a Servicios de Lavandería pueden gestionar."""
+    if user.rol in ("admin", "superadmin"):
         return
     if user.rol == "vendedor" and user.empresa_id:
         emp = db.query(models.Empresa).filter(models.Empresa.id == user.empresa_id).first()
