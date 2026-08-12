@@ -106,9 +106,9 @@
       <textarea class="form-control" id="f-descripcion" rows="3" placeholder="Descripción del producto..."></textarea>
     </div>
     <div class="form-group">
-      <label class="form-label">Disponibilidad y precio por empresa (MXN)</label>
+      <label class="form-label">Disponibilidad y precio por empresa (USD)</label>
       <div id="empresas-grid" style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--border);border-radius:8px;padding:10px"></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px">Marca la casilla para activar la empresa y captura su precio. Las desmarcadas no se ofrecen al cotizar.</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">Los precios se capturan en <strong>USD (dólares)</strong>. Marca la casilla para activar la empresa y captura su precio. Las desmarcadas no se ofrecen al cotizar.</div>
     </div>
     <div class="flex gap-8 mt-16" style="justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
@@ -162,7 +162,7 @@ function preciosResumen(p) {
     .map(pe => {
       const emp = empresas.find(e => e.id === pe.empresa_id);
       const acr = emp ? emp.acronimo : '?';
-      return `<span style="font-family:'DM Mono',monospace;font-size:11px"><strong style="color:var(--accent2)">${acr}</strong> ${formatMXN(pe.precio_lista)}</span>`;
+      return `<span style="font-family:'DM Mono',monospace;font-size:11px"><strong style="color:var(--accent2)">${acr}</strong> ${formatCurrency(pe.precio_lista, 'USD', 1)}</span>`;
     });
   return partes.length ? partes.join(' &nbsp;·&nbsp; ') : '<span style="color:var(--text3)">sin precios</span>';
 }

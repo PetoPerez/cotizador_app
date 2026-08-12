@@ -94,10 +94,10 @@ def descargar_plantilla(db: Session = Depends(get_db), _=Depends(require_admin))
         ws.cell(row=2, column=col_idx, value=val)
 
     # Instrucciones
-    nota = ("Llena solo los precios que apliquen. · precio_general: el producto queda "
-            "disponible para TODAS las empresas a ese precio (si dejas la marca vacía se "
-            "pone 'General'). · Los servicios se importan desde su propia plantilla "
-            "(pantalla de Servicios).")
+    nota = ("Los precios se capturan en USD (dólares). · Llena solo los precios que "
+            "apliquen. · precio_general: el producto queda disponible para TODAS las "
+            "empresas a ese precio (si dejas la marca vacía se pone 'General'). · Los "
+            "servicios se importan desde su propia plantilla (pantalla de Servicios).")
     ws.cell(row=3, column=1, value=nota)
     ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=len(headers))
     ws.cell(row=3, column=1).font = Font(italic=True, color="808080")
