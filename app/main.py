@@ -250,7 +250,14 @@ app.include_router(api)
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 
 def _page(name: str) -> FileResponse:
-    return FileResponse(os.path.join(templates_dir, f"{name}.html"))
+    # no-cache: el navegador revalida la página en cada visita, para que un
+    # arreglo en el JS embebido llegue de inmediato y no se quede sirviendo una
+    # versión vieja cacheada. Permite respuestas 304 (eficiente) pero siempre
+    # verifica con el servidor.
+    return FileResponse(
+        os.path.join(templates_dir, f"{name}.html"),
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
 
 @app.get("/", include_in_schema=False)
 def root():
