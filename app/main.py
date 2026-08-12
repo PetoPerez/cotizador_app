@@ -207,6 +207,12 @@ def on_startup():
             "UUID REFERENCES empresas(id) ON DELETE SET NULL"
         ))
 
+        # ── Descuento de póliza de garantía (SDL): % sobre subtotal antes de IVA ──
+        conn.execute(text(
+            "ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS descuento_pct "
+            "NUMERIC(5,2) NOT NULL DEFAULT 0"
+        ))
+
         # ── Historial de cambios de precio (auditoría) ──
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS precio_historial (

@@ -150,6 +150,9 @@ class Cotizacion(Base):
     vendedor_telefono = Column(String(30))
     estado = Column(String(20), nullable=False, default="borrador")
     notas = Column(Text)
+    # Descuento (%) aplicado sobre el subtotal antes del IVA. Se usa para el
+    # descuento de pólizas de garantía en Servicios de Lavandería (0 = sin descuento).
+    descuento_pct = Column(Numeric(5, 2), nullable=False, default=0, server_default=text("0"))
     # 4 decimales: los montos se guardan en la moneda base (USD/MXN) y el PDF
     # convierte a la moneda mostrada; con solo 2 decimales el redondeo del valor
     # base introducía un centavo de error al reconvertir. El display sigue en 2.

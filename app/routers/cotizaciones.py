@@ -252,10 +252,15 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             db.add(item)
             subtotal += importe
 
-        iva = subtotal * (settings.IVA_PORCENTAJE / 100)
-        cotizacion.subtotal = round(subtotal, 4)
+        # Descuento de póliza de garantía: se aplica sobre el subtotal antes del
+        # IVA y solo en cotizaciones de Servicios de Lavandería.
+        descuento_pct = float(data.descuento_pct) if empresa.codigo == 'servicios_lavanderia' else 0.0
+        base_gravable = subtotal * (1 - descuento_pct / 100)
+        iva = base_gravable * (settings.IVA_PORCENTAJE / 100)
+        cotizacion.subtotal = round(subtotal, 4)          # subtotal original (antes del descuento)
+        cotizacion.descuento_pct = descuento_pct
         cotizacion.iva = round(iva, 4)
-        cotizacion.total = round(subtotal + iva, 4)
+        cotizacion.total = round(base_gravable + iva, 4)
         cotizaciones_creadas.append(cotizacion)
 
     db.commit()

@@ -674,6 +674,12 @@ body {
                   <td class="lbl">SUBTOTAL</td>
                   <td class="val">${{ "{:,.2f}".format(float(cot.subtotal) * tc) }}</td>
               </tr>
+              {% if cot.descuento_pct and float(cot.descuento_pct) > 0 %}
+              <tr>
+                  <td class="lbl">DESCUENTO PÓLIZA DE GARANTÍA ({{ "{:g}".format(float(cot.descuento_pct)) }}%)</td>
+                  <td class="val">-${{ "{:,.2f}".format(float(cot.subtotal) * float(cot.descuento_pct) / 100 * tc) }}</td>
+              </tr>
+              {% endif %}
               <tr>
                   <td class="lbl">IVA (16%)</td>
                   <td class="val">${{ "{:,.2f}".format(float(cot.iva) * tc) }}</td>

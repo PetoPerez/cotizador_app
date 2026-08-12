@@ -268,8 +268,15 @@
                      style="font-family:'DM Mono',monospace;font-size:13px">
             </div>
 
+            <!-- Descuento de póliza de garantía: solo Servicios de Lavandería -->
+            <label id="descuento-group" style="display:none;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;font-size:13px">
+              <input type="checkbox" id="chk-descuento" onchange="calcularTotales()">
+              Descuento póliza de garantía (15%)
+            </label>
+
             <div class="totales-box">
               <div class="totales-row"><span>Subtotal</span><span id="r-subtotal">$0.00</span></div>
+              <div class="totales-row" id="r-descuento-row" style="display:none"><span>Descuento póliza (15%)</span><span id="r-descuento">-$0.00</span></div>
               <div class="totales-row"><span>IVA (16%)</span><span id="r-iva">$0.00</span></div>
               <div class="totales-row"><span>Total</span><span id="r-total">$0.00</span></div>
             </div>
@@ -538,6 +545,12 @@ function actualizarLabelesItems() {
   // En SDL el botón principal agrega equipos (de Supliese); en el resto, productos.
   // Los botones de servicio y flete están disponibles en cualquier cotización.
   if (btn) btn.textContent = isSvc ? '+ Agregar equipo' : '+ Agregar producto';
+  // El descuento de póliza de garantía solo aplica a SDL.
+  const descGroup = document.getElementById('descuento-group');
+  if (descGroup) {
+    descGroup.style.display = isSvc ? 'flex' : 'none';
+    if (!isSvc) { const chk = document.getElementById('chk-descuento'); if (chk) chk.checked = false; }
+  }
 }
 
 // ─── Inicialización ───────────────────────────────────────
@@ -749,6 +762,7 @@ function resetNueva() {
   document.getElementById('f-notas').value = '';
   document.getElementById('f-ciudad-entrega').value = '';
   document.querySelectorAll('.chk-tiempo').forEach(c => c.checked = false);
+  const chkDesc = document.getElementById('chk-descuento'); if (chkDesc) chkDesc.checked = false;
   cargarTipoCambioAPI();
   setMoneda('USD');
   renderItems();
@@ -1166,12 +1180,27 @@ function calcularTotales() {
     const precioFinal = precioListaItem(item) * (1 + item.ajuste / 100);
     subtotal += precioFinal * item.cantidad;
   });
-  const iva = subtotal * 0.16;
-  const total = subtotal + iva;
+  // Descuento de póliza de garantía (15%, solo SDL) sobre el subtotal antes del IVA.
+  const chkDesc = document.getElementById('chk-descuento');
+  const aplicaDesc = descuentoDisponible() && chkDesc && chkDesc.checked;
+  const descuento = aplicaDesc ? subtotal * 0.15 : 0;
+  const baseGravable = subtotal - descuento;
+  const iva = baseGravable * 0.16;
+  const total = baseGravable + iva;
 
   document.getElementById('r-subtotal').textContent = fmtMon(subtotal);
+  const descRow = document.getElementById('r-descuento-row');
+  if (descRow) {
+    descRow.style.display = aplicaDesc ? '' : 'none';
+    if (aplicaDesc) document.getElementById('r-descuento').textContent = '-' + fmtMon(descuento);
+  }
   document.getElementById('r-iva').textContent      = fmtMon(iva);
   document.getElementById('r-total').textContent    = fmtMon(total);
+}
+
+// El descuento de póliza de garantía solo aplica a Servicios de Lavandería.
+function descuentoDisponible() {
+  return esModoServicios();
 }
 
 // ─── Generar cotización ───────────────────────────────────
@@ -1195,12 +1224,17 @@ async function generarCotizacion() {
       if (sel) tiempoEntrega = sel.value;
     }
 
+    // Descuento de póliza de garantía (15%): solo si es SDL y está marcado.
+    const chkDesc = document.getElementById('chk-descuento');
+    const descuentoPct = (descuentoDisponible() && chkDesc && chkDesc.checked) ? 15 : 0;
+
     const body = {
       cliente_id: clienteId,
       notas: document.getElementById('f-notas').value.trim() || null,
       moneda: monedaSeleccionada,
       tipo_cambio: tipoCambioEditable,
       empresas: empresasSeleccionadas,
+      descuento_pct: descuentoPct,
       ciudad_entrega: document.getElementById('f-ciudad-entrega').value.trim() || null,
       tiempo_entrega: tiempoEntrega,
       items: itemsValidos.map(i => ({

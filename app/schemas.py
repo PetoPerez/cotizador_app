@@ -256,6 +256,8 @@ class CotizacionCreate(BaseModel):
     notas: Optional[str] = None
     moneda: str = Field('USD', pattern='^(MXN|USD)$')  # por default las cotizaciones se muestran en dólares
     tipo_cambio: Optional[float] = None
+    # Descuento (%) sobre el subtotal antes de IVA (póliza de garantía, solo SDL).
+    descuento_pct: float = Field(0, ge=0, le=100)
     empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'servicios_lavanderia', 'girbau']] = Field(default=['clm'])
     alcance_servicio: Optional[str] = None
     tiempo_entrega: Optional[str] = Field(None, max_length=50)
@@ -279,6 +281,7 @@ class CotizacionOut(BaseModel):
     estado: str
     notas: Optional[str]
     subtotal: float
+    descuento_pct: float = 0
     iva: float
     total: float
     moneda: str
