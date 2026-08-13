@@ -676,7 +676,7 @@ body {
               </tr>
               {% if cot.descuento_pct and float(cot.descuento_pct) > 0 %}
               <tr>
-                  <td class="lbl">DESCUENTO PÓLIZA DE GARANTÍA ({{ "{:g}".format(float(cot.descuento_pct)) }}%)</td>
+                  <td class="lbl">DESCUENTO PÓLIZA DE MANTENIMIENTO PREVENTIVO ({{ "{:g}".format(float(cot.descuento_pct)) }}%)</td>
                   <td class="val">-${{ "{:,.2f}".format(float(cot.subtotal) * float(cot.descuento_pct) / 100 * tc) }}</td>
               </tr>
               {% endif %}

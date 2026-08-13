@@ -268,10 +268,10 @@
                      style="font-family:'DM Mono',monospace;font-size:13px">
             </div>
 
-            <!-- Descuento de póliza de garantía general: solo Servicios de Lavandería -->
+            <!-- Descuento de póliza de mantenimiento preventivo general: solo Servicios de Lavandería -->
             <div id="descuento-group" style="display:none;margin-bottom:8px">
               <label style="display:flex;align-items:center;gap:8px;font-size:13px">
-                Descuento póliza de garantía general
+                Descuento póliza de mantenimiento preventivo general
                 <input type="number" id="inp-descuento" min="0" max="15" step="0.5" value="0"
                        oninput="calcularTotales()"
                        style="width:64px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;color:var(--text);font-size:13px;text-align:right"> %
@@ -582,7 +582,7 @@ function actualizarLabelesItems() {
   // En SDL el botón principal agrega equipos (de Supliese); en el resto, productos.
   // Los botones de servicio y flete están disponibles en cualquier cotización.
   if (btn) btn.textContent = isSvc ? '+ Agregar equipo' : '+ Agregar producto';
-  // El descuento de póliza de garantía solo aplica a SDL.
+  // El descuento de póliza de mantenimiento preventivo solo aplica a SDL.
   const descGroup = document.getElementById('descuento-group');
   if (descGroup) {
     descGroup.style.display = isSvc ? 'block' : 'none';
@@ -1226,7 +1226,7 @@ function calcularTotales() {
     // Descuento por renglón (solo SDL) sobre el importe de la línea.
     subtotal += precioFinal * item.cantidad * (1 - descuentoItem(item) / 100);
   });
-  // Descuento general de póliza de garantía (0–15%, solo SDL) sobre el subtotal.
+  // Descuento general de póliza de mantenimiento preventivo (0–15%, solo SDL) sobre el subtotal.
   const descGeneral = descuentoDisponible() ? _descuentoGeneral() : 0;
   const montoDescGeneral = subtotal * descGeneral / 100;
   const baseGravable = subtotal - montoDescGeneral;
@@ -1247,7 +1247,7 @@ function calcularTotales() {
   document.getElementById('r-total').textContent    = fmtMon(total);
 }
 
-// El descuento de póliza de garantía solo aplica a Servicios de Lavandería.
+// El descuento de póliza de mantenimiento preventivo solo aplica a Servicios de Lavandería.
 function descuentoDisponible() {
   return esModoServicios();
 }
@@ -1283,7 +1283,7 @@ async function generarCotizacion() {
       if (sel) tiempoEntrega = sel.value;
     }
 
-    // Descuento general de póliza de garantía (0–15%): solo si es SDL.
+    // Descuento general de póliza de mantenimiento preventivo (0–15%): solo si es SDL.
     const descuentoPct = descuentoDisponible() ? _descuentoGeneral() : 0;
 
     const body = {
