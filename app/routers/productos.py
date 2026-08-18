@@ -1,5 +1,6 @@
 import io
 import uuid
+from dataclasses import dataclass
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -123,35 +124,49 @@ def _parsear_precio_import(raw):
         return None
 
 
-@router.post("/importar")
-def importar_excel(
-    file: UploadFile = File(...),
-    confirmar: bool = False,       # False = solo vista previa (no escribe); True = aplica
-    marca_general: bool = False,   # confirma guardar productos sin marca como 'General'
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_admin),
-):
-    """Importa productos desde Excel en dos fases.
+@dataclass
+class _ProductoExistente:
+    """Vista mínima de un producto ya guardado, para emparejar en la importación.
+    precios: {codigo_empresa: (precio_lista|None, activo)}."""
+    id: object
+    descripcion: object
+    precios: dict
 
-    Fase 1 (confirmar=False): analiza el archivo SIN escribir y devuelve una vista
-    previa (nuevos, a actualizar con el detalle de cambios, sin cambios, errores).
-    Fase 2 (confirmar=True): aplica solo lo nuevo y lo que realmente cambió.
+
+def _extension_valida(filename) -> bool:
+    """Acepta .xlsx/.xls sin importar mayúsculas ('LISTA.XLSX' es válido)."""
+    return bool(filename) and str(filename).lower().strip().endswith((".xlsx", ".xls"))
+
+
+def _norm_clave(s) -> str:
+    """Normaliza marca/equipo/modelo para emparejar: minúsculas y espacios
+    colapsados. Así 'GIRBAU', 'girbau' y ' Girbau ' son el MISMO producto y la
+    importación ACTUALIZA en vez de crear un duplicado."""
+    return " ".join(str(s or "").split()).lower()
+
+
+def _analizar_importacion(rows, empresas, catalogo):
+    """Clasifica las filas del Excel en nuevos / a actualizar / sin cambios / errores.
+
+    Función PURA (sin base de datos) para poder probarla en aislamiento; ver
+    tests/test_import_productos.py.
+
+      rows     : filas del Excel (incluye la de encabezados), como devuelve
+                 openpyxl iter_rows(values_only=True).
+      empresas : objetos con .codigo y .acronimo (empresas importables).
+      catalogo : {(marca,equipo,modelo) normalizados con _norm_clave: _ProductoExistente}.
+
+    Devuelve dict con `error` (str|None; problema de formato: si no es None nada
+    debe aplicarse) y, en éxito, nuevos / actualizar / sin_cambios / errores /
+    sin_marca / columnas_ignoradas.
     """
-    if not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(status_code=400, detail="Solo se aceptan archivos .xlsx o .xls")
-    try:
-        wb = openpyxl.load_workbook(io.BytesIO(file.file.read()), data_only=True)
-    except Exception:
-        raise HTTPException(status_code=400, detail="No se pudo leer el archivo Excel")
+    vacio = {"error": None, "nuevos": [], "actualizar": [], "sin_cambios": 0,
+             "errores": [], "sin_marca": 0, "columnas_ignoradas": []}
 
-    ws = wb.active
-    rows = list(ws.iter_rows(values_only=True))
     if not rows:
-        raise HTTPException(status_code=400, detail="El archivo está vacío")
+        return {**vacio, "error": "El archivo está vacío"}
 
-    empresas = _empresas_para_import(db)  # CLM, GS, SUP, GIR (sin servicios)
     empresas_por_codigo = {e.codigo: e for e in empresas}
-    acron_por_codigo = {e.codigo: e.acronimo for e in empresas}
     precio_col_to_empresa = {f"precio_{e.acronimo.lower()}": e for e in empresas}
 
     # ── Validación de formato (encabezados). Si está mal, NO se carga nada. ──
@@ -177,24 +192,21 @@ def importar_excel(
 
     missing = {"equipo", "modelo"} - col_idx.keys()
     if missing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Formato incorrecto: faltan columnas requeridas ({', '.join(sorted(missing))}). "
-                   f"Descarga la plantilla y respeta los encabezados. "
-                   f"Encabezados detectados: {', '.join(h for h in headers if h) or '(ninguno)'}",
-        )
+        return {**vacio, "columnas_ignoradas": cols_desconocidas,
+                "error": f"Formato incorrecto: faltan columnas requeridas "
+                         f"({', '.join(sorted(missing))}). Descarga la plantilla y respeta "
+                         f"los encabezados. Encabezados detectados: "
+                         f"{', '.join(h for h in headers if h) or '(ninguno)'}"}
     if not precio_col_idx and idx_general is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Formato incorrecto: incluye al menos una columna de precio "
-                   "(precio_general, precio_clm, precio_gs, precio_sup o precio_gir).",
-        )
+        return {**vacio, "columnas_ignoradas": cols_desconocidas,
+                "error": "Formato incorrecto: incluye al menos una columna de precio "
+                         "(precio_general, precio_clm, precio_gs, precio_sup o precio_gir)."}
 
     def cell(row, idx):
         return row[idx] if idx is not None and idx < len(row) else None
 
-    nuevos = []       # {marca,equipo,modelo,desc,precios,sin_marca_fila, referencia}
-    actualizar = []   # {producto, desc, precios, cambia_desc, cambios[str], referencia}
+    nuevos = []       # {marca,equipo,modelo,desc,precios,sin_marca_fila,referencia}
+    actualizar = []   # {existente_id,desc,precios,cambia_desc,cambios[str],referencia}
     sin_cambios = 0
     errores = []
     sin_marca = 0
@@ -229,28 +241,25 @@ def importar_excel(
             continue
 
         ref = f"{marca} / {equipo} / {modelo}"
-        existente = db.query(models.Producto).filter(
-            models.Producto.marca == marca,
-            models.Producto.equipo == equipo,
-            models.Producto.modelo == modelo,
-        ).first()
+        clave = (_norm_clave(marca), _norm_clave(equipo), _norm_clave(modelo))
+        existente = catalogo.get(clave)
 
         if existente:
-            pe_por_emp = {str(pe.empresa_id): pe for pe in existente.empresas}
             cambios = []
             cambia_desc = desc is not None and (desc or None) != (existente.descripcion or None)
             if cambia_desc:
                 cambios.append("descripción")
             for codigo, precio in precios_fila.items():
                 emp = empresas_por_codigo[codigo]
-                pe = pe_por_emp.get(str(emp.id))
-                antes = float(pe.precio_lista) if pe and pe.activo else None
+                antes_precio, antes_activo = existente.precios.get(codigo, (None, False))
+                antes = float(antes_precio) if (antes_precio is not None and antes_activo) else None
                 if antes is None or round(antes, 2) != round(precio, 2):
                     antes_txt = f"{antes:,.2f}" if antes is not None else "—"
                     cambios.append(f"precio {emp.acronimo}: {antes_txt} → {precio:,.2f}")
             if cambios:
-                actualizar.append({"producto": existente, "desc": desc, "precios": precios_fila,
-                                    "cambia_desc": cambia_desc, "cambios": cambios, "referencia": ref})
+                actualizar.append({"existente_id": existente.id, "desc": desc,
+                                   "precios": precios_fila, "cambia_desc": cambia_desc,
+                                   "cambios": cambios, "referencia": ref})
             else:
                 sin_cambios += 1
         else:
@@ -260,6 +269,68 @@ def importar_excel(
                            "precios": precios_fila, "sin_marca_fila": sin_marca_fila,
                            "referencia": ref})
 
+    return {"error": None, "nuevos": nuevos, "actualizar": actualizar,
+            "sin_cambios": sin_cambios, "errores": errores, "sin_marca": sin_marca,
+            "columnas_ignoradas": cols_desconocidas}
+
+
+@router.post("/importar")
+def importar_excel(
+    file: UploadFile = File(...),
+    confirmar: bool = False,       # False = solo vista previa (no escribe); True = aplica
+    marca_general: bool = False,   # confirma guardar productos sin marca como 'General'
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_admin),
+):
+    """Importa productos desde Excel en dos fases.
+
+    Fase 1 (confirmar=False): analiza el archivo SIN escribir y devuelve una vista
+    previa (nuevos, a actualizar con el detalle de cambios, sin cambios, errores).
+    Fase 2 (confirmar=True): aplica solo lo nuevo y lo que realmente cambió.
+    """
+    if not _extension_valida(file.filename):
+        raise HTTPException(status_code=400, detail="Solo se aceptan archivos .xlsx o .xls")
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file.file.read()), data_only=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="No se pudo leer el archivo Excel")
+
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+
+    empresas = _empresas_para_import(db)  # CLM, GS, SUP, GIR (sin servicios)
+    empresas_por_codigo = {e.codigo: e for e in empresas}
+    emp_por_id = {str(e.id): e for e in empresas}
+
+    # Índice de productos existentes en UNA sola consulta. El emparejamiento usa la
+    # clave normalizada (minúsculas/espacios colapsados), de modo que si el Excel
+    # trae otra caja o espaciado que la BD el producto se ACTUALIZA en vez de
+    # duplicarse. (Antes el match era exacto y sensible a mayúsculas.)
+    existentes_db = (db.query(models.Producto)
+                       .options(selectinload(models.Producto.empresas)).all())
+    catalogo = {}
+    orm_por_id = {}
+    for p in existentes_db:
+        clave = (_norm_clave(p.marca), _norm_clave(p.equipo), _norm_clave(p.modelo))
+        precios = {}
+        for pe in p.empresas:
+            emp = emp_por_id.get(str(pe.empresa_id))
+            if emp:
+                precios[emp.codigo] = (pe.precio_lista, pe.activo)
+        catalogo[clave] = _ProductoExistente(id=str(p.id), descripcion=p.descripcion, precios=precios)
+        orm_por_id[str(p.id)] = p
+
+    # ── Clasificación (función pura, cubierta por tests/test_import_productos.py) ──
+    resultado = _analizar_importacion(rows, empresas, catalogo)
+    if resultado["error"]:
+        raise HTTPException(status_code=400, detail=resultado["error"])
+
+    nuevos = resultado["nuevos"]
+    actualizar = resultado["actualizar"]
+    sin_cambios = resultado["sin_cambios"]
+    errores = resultado["errores"]
+    sin_marca = resultado["sin_marca"]
+
     resumen = {"nuevos": len(nuevos), "actualizar": len(actualizar),
                "sin_cambios": sin_cambios, "errores": len(errores), "sin_marca": sin_marca}
     preview = {
@@ -268,7 +339,7 @@ def importar_excel(
                    for x in nuevos[:100]],
         "actualizar": [{"item": x["referencia"], "cambios": x["cambios"]} for x in actualizar[:100]],
         "errores": errores[:100],
-        "columnas_ignoradas": cols_desconocidas,
+        "columnas_ignoradas": resultado["columnas_ignoradas"],
     }
 
     # ── Fase 1: vista previa ──
@@ -305,7 +376,7 @@ def importar_excel(
             for codigo, precio in x["precios"].items():
                 upsert_precio(p, empresas_por_codigo[codigo], precio)
         for x in actualizar:
-            p = x["producto"]
+            p = orm_por_id[str(x["existente_id"])]
             if x["cambia_desc"]:
                 p.descripcion = x["desc"]
             db.flush()
