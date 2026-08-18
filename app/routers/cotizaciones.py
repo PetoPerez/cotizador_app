@@ -233,9 +233,14 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 )
 
             precio_final = precio_lista_emp * (1 + ajuste / 100)
-            # Descuento por renglón (póliza de mantenimiento preventivo): tope 15% y solo en SDL.
-            descuento_item = float(item_data.descuento_pct) if empresa.codigo == 'servicios_lavanderia' else 0.0
-            descuento_item = max(0.0, min(15.0, descuento_item))
+            # Descuento por renglón. En SDL cualquier vendedor puede (tope 15%,
+            # póliza de mantenimiento preventivo); un admin/superadmin puede en
+            # cualquier empresa y sin tope real (0–100%).
+            es_admin = current_user.rol in ("admin", "superadmin")
+            desc_habilitado = es_admin or empresa.codigo == 'servicios_lavanderia'
+            cap_desc = 100.0 if es_admin else 15.0
+            descuento_item = float(item_data.descuento_pct) if desc_habilitado else 0.0
+            descuento_item = max(0.0, min(cap_desc, descuento_item))
             importe = precio_final * item_data.cantidad * (1 - descuento_item / 100)
 
             item = models.CotizacionItem(
@@ -256,10 +261,14 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
             db.add(item)
             subtotal += importe
 
-        # Descuento de póliza de mantenimiento preventivo: se aplica sobre el subtotal antes del
-        # IVA y solo en cotizaciones de Servicios de Lavandería.
-        descuento_pct = float(data.descuento_pct) if empresa.codigo == 'servicios_lavanderia' else 0.0
-        descuento_pct = max(0.0, min(15.0, descuento_pct))
+        # Descuento general sobre el subtotal antes del IVA. SDL: cualquier
+        # vendedor, tope 15% (póliza de mantenimiento preventivo).
+        # Admin/superadmin: cualquier empresa, sin tope real (0–100%).
+        es_admin = current_user.rol in ("admin", "superadmin")
+        desc_habilitado = es_admin or empresa.codigo == 'servicios_lavanderia'
+        cap_desc = 100.0 if es_admin else 15.0
+        descuento_pct = float(data.descuento_pct) if desc_habilitado else 0.0
+        descuento_pct = max(0.0, min(cap_desc, descuento_pct))
         base_gravable = subtotal * (1 - descuento_pct / 100)
         iva = base_gravable * (settings.IVA_PORCENTAJE / 100)
         cotizacion.subtotal = round(subtotal, 4)          # subtotal original (antes del descuento)

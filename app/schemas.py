@@ -224,8 +224,9 @@ class CotizacionItemCreate(BaseModel):
     descripcion_libre: Optional[str] = None
     cantidad: int
     porcentaje_ajuste: float = 0.0
-    # Descuento (%) de este renglón, tope 15% (póliza de garantía, solo SDL).
-    descuento_pct: float = Field(0, ge=0, le=15)
+    # Descuento (%) de este renglón. Tope 15% para vendedores SDL; admin/superadmin
+    # sin tope (0–100). El backend recorta según rol; aquí se acota a 0–100.
+    descuento_pct: float = Field(0, ge=0, le=100)
     # Servicio adicional (flete, maniobras, etc.): precio unitario capturado a
     # mano, en la moneda de la cotización. Solo para ítems sin producto ni
     # servicio; se ignora en los demás.
@@ -259,9 +260,10 @@ class CotizacionCreate(BaseModel):
     notas: Optional[str] = None
     moneda: str = Field('USD', pattern='^(MXN|USD)$')  # por default las cotizaciones se muestran en dólares
     tipo_cambio: Optional[float] = None
-    # Descuento (%) general sobre el subtotal antes de IVA (póliza de garantía,
-    # solo SDL). Tope 15%.
-    descuento_pct: float = Field(0, ge=0, le=15)
+    # Descuento (%) general sobre el subtotal antes de IVA. Tope 15% para
+    # vendedores SDL; admin/superadmin sin tope (0–100). El backend recorta
+    # según rol; aquí se acota a 0–100.
+    descuento_pct: float = Field(0, ge=0, le=100)
     empresas: List[Literal['clm', 'supliese_gamesail', 'supliese', 'servicios_lavanderia', 'girbau']] = Field(default=['clm'])
     alcance_servicio: Optional[str] = None
     tiempo_entrega: Optional[str] = Field(None, max_length=50)

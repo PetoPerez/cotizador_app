@@ -335,7 +335,7 @@ body {
           <tr>
             <td>{{ item.cantidad }}</td>
             <td>{{ item.producto.modelo }}</td>
-            <td>${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}</td>
+            <td>${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}{% if item.descuento_pct and float(item.descuento_pct) > 0 %}<br><span style="font-size:7px;color:#6b7280">Desc. {{ "{:g}".format(float(item.descuento_pct)) }}%</span>{% endif %}</td>
             <td>${{ "{:,.2f}".format(float(item.importe) * tc) }} {{ moneda }}</td>
           </tr>
         </tbody>
@@ -378,6 +378,7 @@ body {
     <div class="presup-title">PRESUPUESTO FINAL:</div>
     <table class="presup-table">
       <tr><td><span class="cl-bold">Subtotal:</span></td><td>${{ "{:,.2f}".format(float(cot.subtotal) * tc) }} {{ moneda }}</td></tr>
+      {% if cot.descuento_pct and float(cot.descuento_pct) > 0 %}<tr><td><span class="cl-bold">Descuento ({{ "{:g}".format(float(cot.descuento_pct)) }}%):</span></td><td>-${{ "{:,.2f}".format(float(cot.subtotal) * float(cot.descuento_pct) / 100 * tc) }} {{ moneda }}</td></tr>{% endif %}
       <tr><td><span class="cl-bold">IVA:</span></td>      <td>${{ "{:,.2f}".format(float(cot.iva) * tc) }} {{ moneda }}</td></tr>
       <tr class="total-row"><td>Total:</td>               <td>${{ "{:,.2f}".format(float(cot.total) * tc) }} {{ moneda }}</td></tr>
     </table>

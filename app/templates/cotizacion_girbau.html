@@ -467,7 +467,7 @@ body {
         <tr>
             <td class="money">{{ item.cantidad }}</td>
             <td>{{ item.producto.modelo }}</td>
-            <td class="money">${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}</td>
+            <td class="money">${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}{% if item.descuento_pct and float(item.descuento_pct) > 0 %}<br><span style="font-size:7px;color:#6b7280">Desc. {{ "{:g}".format(float(item.descuento_pct)) }}%</span>{% endif %}</td>
             <td class="money">${{ "{:,.2f}".format(float(item.importe) * tc) }} {{ moneda }}</td>
         </tr>
     </tbody>
@@ -520,7 +520,7 @@ body {
         <tr>
             <td class="money">{{ item.cantidad }}</td>
             <td>{% if item.servicio %}{{ item.servicio.nombre }}{% else %}{{ item.descripcion_libre }}{% endif %}</td>
-            <td class="money">${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}</td>
+            <td class="money">${{ "{:,.2f}".format(float(item.precio_final) * tc) }} {{ moneda }}{% if item.descuento_pct and float(item.descuento_pct) > 0 %}<br><span style="font-size:7px;color:#6b7280">Desc. {{ "{:g}".format(float(item.descuento_pct)) }}%</span>{% endif %}</td>
             <td class="money">${{ "{:,.2f}".format(float(item.importe) * tc) }} {{ moneda }}</td>
         </tr>
     </tbody>
@@ -544,6 +544,12 @@ body {
         <span class="label">Subtotal:</span>
         <strong>${{ "{:,.2f}".format(float(cot.subtotal) * tc) }} {{ moneda }}</strong>
     </div>
+    {% if cot.descuento_pct and float(cot.descuento_pct) > 0 %}
+    <div class="final-row">
+        <span class="label">Descuento ({{ "{:g}".format(float(cot.descuento_pct)) }}%):</span>
+        <strong>-${{ "{:,.2f}".format(float(cot.subtotal) * float(cot.descuento_pct) / 100 * tc) }} {{ moneda }}</strong>
+    </div>
+    {% endif %}
     <div class="final-row">
         <span class="label">IVA:</span>
         <strong>${{ "{:,.2f}".format(float(cot.iva) * tc) }} {{ moneda }}</strong>
