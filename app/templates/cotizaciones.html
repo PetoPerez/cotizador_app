@@ -1017,13 +1017,6 @@ function renderItems() {
       ${entidad ? `
       <div style="margin-top:12px">
         <label class="form-label">Ajuste de precio</label>
-        <div class="slider-wrap">
-          <span style="font-size:12px;color:var(--danger);font-family:'DM Mono',monospace">${item.margenMin}%</span>
-          <input type="range" min="${item.margenMin}" max="${item.margenMax}" step="0.5" value="${item.ajuste}"
-            oninput="cambiarAjuste(${i}, this.value)">
-          <span style="font-size:12px;color:var(--accent2);font-family:'DM Mono',monospace">+${item.margenMax}%</span>
-          <span class="slider-val">${item.ajuste >= 0 ? '+' : ''}${item.ajuste}%</span>
-        </div>
         <div class="precio-preview">
           <span style="color:var(--text3);font-size:12px">
             Lista: <strong style="font-family:'DM Mono',monospace">${fmtMon(precioLista)}</strong>
@@ -1173,24 +1166,6 @@ function cambiarCantidad(i, val) {
   calcularTotales();
 }
 
-function cambiarAjuste(i, val) {
-  items[i].ajuste = parseFloat(val);
-  const entidad = entidadDelItem(items[i]);
-  if (!entidad) return;
-  const precioLista = precioListaItem(items[i]);
-  const precioFinal = precioLista * (1 + items[i].ajuste / 100);
-  const importe = precioFinal * items[i].cantidad * (1 - descuentoItem(items[i]) / 100);
-  const row = document.getElementById(`item-row-${i}`);
-  if (!row) return;
-  const sliderVal   = row.querySelector('.slider-val');
-  const preview     = row.querySelector('.precio-preview .final');
-  const precioInput = document.getElementById(`precio-unit-${i}`);
-  if (sliderVal)   sliderVal.textContent = (items[i].ajuste >= 0 ? '+' : '') + items[i].ajuste + '%';
-  if (preview)     preview.textContent   = fmtMon(importe);
-  if (precioInput) { precioInput.value = aMonedaMostrada(precioFinal).toFixed(2); precioInput.style.borderColor = 'var(--border)'; }
-  calcularTotales();
-}
-
 function cambiarPrecioManual(i, val) {
   // El usuario captura el precio en la moneda mostrada; se convierte a la
   // moneda interna para derivar el % de ajuste sobre el precio de lista.
@@ -1209,16 +1184,12 @@ function cambiarPrecioManual(i, val) {
 
   const row = document.getElementById(`item-row-${i}`);
   if (!row) return;
-  const slider      = row.querySelector('input[type="range"]');
-  const sliderVal   = row.querySelector('.slider-val');
   const preview     = row.querySelector('.precio-preview .final');
   const precioInput = document.getElementById(`precio-unit-${i}`);
 
   const precioReal = precioLista * (1 + ajuste / 100);
   const importe    = precioReal * items[i].cantidad * (1 - descuentoItem(items[i]) / 100);
 
-  if (slider)    slider.value           = ajuste;
-  if (sliderVal) sliderVal.textContent  = (ajuste >= 0 ? '+' : '') + ajuste + '%';
   if (preview)   preview.textContent    = fmtMon(importe);
   if (precioInput) precioInput.style.borderColor = fuera ? 'var(--danger)' : 'var(--accent)';
   calcularTotales();
