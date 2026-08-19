@@ -881,8 +881,6 @@ function agregarItem(esServicio) {
     cantidad: 1,
     ajuste: 0,
     descuento: 0,   // descuento por renglón (0–15%, solo SDL)
-    margenMin: user.margen_min ?? -10,
-    margenMax: user.margen_max ?? 10,
   });
   renderItems();
 }
@@ -1017,6 +1015,7 @@ function renderItems() {
       ${entidad ? `
       <div style="margin-top:12px">
         <label class="form-label">Ajuste de precio</label>
+        ${ajusteControlHTML(item, i)}
         <div class="precio-preview">
           <span style="color:var(--text3);font-size:12px">
             Lista: <strong style="font-family:'DM Mono',monospace">${fmtMon(precioLista)}</strong>
@@ -1166,6 +1165,56 @@ function cambiarCantidad(i, val) {
   calcularTotales();
 }
 
+// Rango del ajuste de precio: vendedores ±5% del precio de lista; admin sin tope
+// (porcentaje libre). Se usa tanto para el control como para el clamp.
+const AJUSTE_TOPE_VEND = 5;
+function _ajusteMin() { return isAdmin ? -Infinity : -AJUSTE_TOPE_VEND; }
+function _ajusteMax() { return isAdmin ?  Infinity :  AJUSTE_TOPE_VEND; }
+
+// Control de "Ajuste de precio": slider ±5% para vendedores; campo numérico
+// libre (sin tope) para admin/superadmin. El elemento editable lleva el id
+// ajuste-ctrl-${i} para poder sincronizarlo desde la captura por precio.
+function ajusteControlHTML(item, i) {
+  const signo = (item.ajuste >= 0 ? '+' : '') + item.ajuste + '%';
+  if (isAdmin) {
+    return `<div class="slider-wrap">
+      <span style="font-size:12px;color:var(--text3);white-space:nowrap">Ajuste %</span>
+      <input type="number" id="ajuste-ctrl-${i}" step="0.5" value="${item.ajuste}"
+        oninput="cambiarAjuste(${i}, this.value)"
+        style="width:88px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;text-align:right;outline:none">
+      <span class="slider-val">${signo}</span>
+    </div>`;
+  }
+  return `<div class="slider-wrap">
+    <span style="font-size:12px;color:var(--danger);font-family:'DM Mono',monospace">-${AJUSTE_TOPE_VEND}%</span>
+    <input type="range" id="ajuste-ctrl-${i}" min="-${AJUSTE_TOPE_VEND}" max="${AJUSTE_TOPE_VEND}" step="0.5" value="${item.ajuste}"
+      oninput="cambiarAjuste(${i}, this.value)">
+    <span style="font-size:12px;color:var(--accent2);font-family:'DM Mono',monospace">+${AJUSTE_TOPE_VEND}%</span>
+    <span class="slider-val">${signo}</span>
+  </div>`;
+}
+
+function cambiarAjuste(i, val) {
+  let a = parseFloat(val);
+  if (isNaN(a)) a = 0;
+  a = Math.max(_ajusteMin(), Math.min(_ajusteMax(), a));
+  items[i].ajuste = a;
+  const entidad = entidadDelItem(items[i]);
+  if (!entidad) return;
+  const precioLista = precioListaItem(items[i]);
+  const precioFinal = precioLista * (1 + items[i].ajuste / 100);
+  const importe = precioFinal * items[i].cantidad * (1 - descuentoItem(items[i]) / 100);
+  const row = document.getElementById(`item-row-${i}`);
+  if (!row) return;
+  const sliderVal   = row.querySelector('.slider-val');
+  const preview     = row.querySelector('.precio-preview .final');
+  const precioInput = document.getElementById(`precio-unit-${i}`);
+  if (sliderVal)   sliderVal.textContent = (items[i].ajuste >= 0 ? '+' : '') + items[i].ajuste + '%';
+  if (preview)     preview.textContent   = fmtMon(importe);
+  if (precioInput) { precioInput.value = aMonedaMostrada(precioFinal).toFixed(2); precioInput.style.borderColor = 'var(--border)'; }
+  calcularTotales();
+}
+
 function cambiarPrecioManual(i, val) {
   // El usuario captura el precio en la moneda mostrada; se convierte a la
   // moneda interna para derivar el % de ajuste sobre el precio de lista.
@@ -1177,20 +1226,24 @@ function cambiarPrecioManual(i, val) {
   const precioLista = precioListaItem(items[i]);
   let ajuste = ((precio / precioLista) - 1) * 100;
 
-  const fuera = ajuste < items[i].margenMin || ajuste > items[i].margenMax;
-  ajuste = Math.max(items[i].margenMin, Math.min(items[i].margenMax, ajuste));
+  const fuera = ajuste < _ajusteMin() || ajuste > _ajusteMax();
+  ajuste = Math.max(_ajusteMin(), Math.min(_ajusteMax(), ajuste));
   ajuste = Math.round(ajuste * 2) / 2; // granularidad 0.5%
   items[i].ajuste = ajuste;
 
   const row = document.getElementById(`item-row-${i}`);
   if (!row) return;
+  const ajusteCtrl  = document.getElementById(`ajuste-ctrl-${i}`);
+  const sliderVal   = row.querySelector('.slider-val');
   const preview     = row.querySelector('.precio-preview .final');
   const precioInput = document.getElementById(`precio-unit-${i}`);
 
   const precioReal = precioLista * (1 + ajuste / 100);
   const importe    = precioReal * items[i].cantidad * (1 - descuentoItem(items[i]) / 100);
 
-  if (preview)   preview.textContent    = fmtMon(importe);
+  if (ajusteCtrl) ajusteCtrl.value      = ajuste;
+  if (sliderVal)  sliderVal.textContent = (ajuste >= 0 ? '+' : '') + ajuste + '%';
+  if (preview)    preview.textContent   = fmtMon(importe);
   if (precioInput) precioInput.style.borderColor = fuera ? 'var(--danger)' : 'var(--accent)';
   calcularTotales();
 }

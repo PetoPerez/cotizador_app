@@ -223,13 +223,14 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                 # Los servicios están en MXN; se llevan a la base (÷ tc si base USD).
                 precio_lista_emp = a_base(servicio.precio_unitario, 'MXN')
 
-            # Validar rango de ajuste (no aplica a servicios adicionales: su
-            # precio es fijo y capturado, sin margen).
-            if not es_adicional and not (float(current_user.margen_min) <= item_data.porcentaje_ajuste <= float(current_user.margen_max)):
+            # Ajuste de precio: los vendedores pueden mover ±5% el precio de lista;
+            # admin/superadmin sin tope (porcentaje libre). No aplica a servicios
+            # adicionales (precio fijo capturado, sin margen).
+            _es_admin = current_user.rol in ("admin", "superadmin")
+            if not es_adicional and not _es_admin and not (-5.0 <= item_data.porcentaje_ajuste <= 5.0):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Ajuste {item_data.porcentaje_ajuste}% fuera del rango permitido "
-                           f"[{current_user.margen_min}%, {current_user.margen_max}%]"
+                    detail=f"Ajuste {item_data.porcentaje_ajuste}% fuera del rango permitido [-5%, +5%]"
                 )
 
             precio_final = precio_lista_emp * (1 + ajuste / 100)
