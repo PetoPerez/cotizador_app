@@ -349,6 +349,10 @@ body {
           {% endif %}
         {% endfor %}
       {% endif %}
+      <!-- Limpia el float: obliga a .char-wrap a extenderse por debajo de la
+           imagen para que NUNCA se encime sobre el producto o los totales
+           siguientes (overflow:hidden no basta en WeasyPrint con texto corto). -->
+      <div style="clear:both"></div>
     </div>
 
   </div>
