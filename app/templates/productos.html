@@ -129,6 +129,7 @@ document.getElementById('sidebar-root').innerHTML = renderSidebar('productos');
 let productos = [];
 let empresas  = [];
 let editId    = null;
+let estadoHist = {};  // producto_id -> último movimiento de activación/desactivación
 
 async function cargar() {
   try {
@@ -139,10 +140,40 @@ async function cargar() {
     empresas  = Array.isArray(emps)  ? emps  : [];
     productos = Array.isArray(prods) ? prods : [];
     renderEmpresasGrid();
+    await cargarEstadosHistorial();
     renderTabla(productos);
   } catch (e) {
     showAlert(e.message);
   }
+}
+
+async function cargarEstadosHistorial() {
+  // Solo los inactivos tienen movimiento que mostrar; el historial es
+  // informativo, así que un error no debe romper el listado.
+  estadoHist = {};
+  const inactivos = productos.filter(p => !p.activo);
+  await Promise.all(inactivos.map(async p => {
+    try {
+      const hist = await apiFetch(`/productos/${p.id}/historial-estado`);
+      estadoHist[p.id] = Array.isArray(hist) && hist.length ? hist[0] : null;
+    } catch {
+      estadoHist[p.id] = null;
+    }
+  }));
+}
+
+function fechaCorta(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const mes = d.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '');
+  return `${String(d.getDate()).padStart(2, '0')}-${mes}`;
+}
+
+function textoUltimoMovimiento(id) {
+  const h = estadoHist[id];
+  if (!h) return '';
+  const quien = h.usuario_nombre || 'usuario desconocido';
+  return `${h.activo_nuevo ? 'Activado' : 'Desactivado'} por ${quien} el ${fechaCorta(h.created_at)}`;
 }
 
 function renderEmpresasGrid() {
@@ -229,7 +260,11 @@ function renderTabla(data) {
       <td><span style="font-family:'DM Mono',monospace;font-size:12px">${p.modelo}</span></td>
       <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.descripcion || '—'}</td>
       <td>${preciosResumen(p)}</td>
-      <td>${p.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-red">Inactivo</span>'}</td>
+      <td>${p.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-red">Inactivo</span>'}
+        ${!p.activo
+          ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">${textoUltimoMovimiento(p.id)}</div>`
+          : ''}
+      </td>
       <td>
         <div class="flex gap-8">
           <button class="btn btn-secondary btn-sm" onclick="editar('${p.id}')">Editar</button>

@@ -244,6 +244,26 @@ def on_startup():
             "ON precio_historial (producto_id)"
         ))
 
+        # ── Historial de activación/desactivación de productos (auditoría) ──
+        # `productos.activo` no dejaba rastro de quién lo cambió; sin esto,
+        # desactivar equivale a borrar sin trazabilidad.
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS producto_estado_historial (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                producto_id UUID REFERENCES productos(id) ON DELETE SET NULL,
+                referencia TEXT NOT NULL,
+                activo_nuevo BOOLEAN NOT NULL,
+                usuario_id UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+                usuario_nombre VARCHAR(100),
+                origen VARCHAR(20) NOT NULL DEFAULT 'manual',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_producto_estado_historial_producto "
+            "ON producto_estado_historial (producto_id)"
+        ))
+
         # ── Índices de rendimiento (Postgres no indexa las FKs solo) ──
         # Idempotentes (IF NOT EXISTS); en tablas chicas se crean al instante.
         for _idx_sql in (

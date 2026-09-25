@@ -1,9 +1,9 @@
-"""Helper para registrar cambios de precio en la tabla `precio_historial`.
+"""Helpers de auditoría append-only.
 
-Se usa desde los routers de productos y servicios y desde el script batch de
-actualización de precios. No hace commit: agrega el registro a la sesión y deja
-que el llamador confirme la transacción junto con el cambio de precio, para que
-el historial y el precio se guarden de forma atómica.
+`registrar_cambio_precio` y `registrar_cambio_estado` se usan desde los routers de
+productos y servicios y desde scripts batch. Ninguno hace commit: agregan el
+registro a la sesión y dejan que el llamador confirme la transacción junto con el
+cambio, para que el historial y el cambio se guarden de forma atómica.
 """
 from decimal import Decimal, InvalidOperation
 
@@ -19,10 +19,18 @@ def _to_dec(v):
         return None
 
 
-def ref_producto(producto, empresa) -> str:
-    """Snapshot legible de un precio de producto por empresa."""
+def ref_producto(producto, empresa=None) -> str:
+    """Snapshot legible de un producto.
+
+    Con `empresa`, agrega el acrónimo ("MARCA / EQUIPO / MODELO — CLM"); sin ella,
+    devuelve solo la referencia base. El historial de estado no lleva el sufijo de
+    empresa porque `activo` es del producto, no de un precio por empresa.
+    """
+    base = f"{producto.marca} / {producto.equipo} / {producto.modelo}"
+    if empresa is None:
+        return base
     acr = getattr(empresa, "acronimo", None) or getattr(empresa, "codigo", "?")
-    return f"{producto.marca} / {producto.equipo} / {producto.modelo} — {acr}"
+    return f"{base} — {acr}"
 
 
 def registrar_cambio_precio(
@@ -59,6 +67,49 @@ def registrar_cambio_precio(
         producto_id=producto_id,
         empresa_id=empresa_id,
         servicio_id=servicio_id,
+        usuario_id=getattr(usuario, "id", None),
+        usuario_nombre=usuario_nombre or getattr(usuario, "nombre", None),
+        origen=origen,
+    )
+    db.add(reg)
+    return reg
+
+
+def debe_registrar_estado(activo_actual, activo_nuevo) -> bool:
+    """True solo cuando el estado `activo` cambia de verdad.
+
+    Evita llenar la bitácora de repeticiones: un `PUT` que reenvía el mismo valor
+    (o que no trae `activo`) no deja registro. `activo_nuevo=None` significa "el
+    payload no traía el campo"; se compara con `is None` para no confundir un
+    `False` (desactivar) con la ausencia del campo.
+    """
+    if activo_nuevo is None:
+        return False
+    return bool(activo_actual) != bool(activo_nuevo)
+
+
+def registrar_cambio_estado(
+    db,
+    *,
+    producto,
+    activo_nuevo,
+    activo_anterior=None,
+    usuario=None,           # objeto Usuario (o None para cambios de script)
+    usuario_nombre=None,    # override del nombre (p. ej. "script")
+    origen="manual",        # canal: manual | importacion | script
+):
+    """Agrega (sin commit) un registro al historial de estado de un producto.
+
+    Devuelve el registro creado, o None si no hubo cambio real (activar uno ya
+    activo, o desactivar uno ya inactivo).
+    """
+    if not debe_registrar_estado(activo_anterior, activo_nuevo):
+        return None
+
+    reg = models.ProductoEstadoHistorial(
+        producto_id=getattr(producto, "id", None),
+        referencia=ref_producto(producto),
+        activo_nuevo=bool(activo_nuevo),
         usuario_id=getattr(usuario, "id", None),
         usuario_nombre=usuario_nombre or getattr(usuario, "nombre", None),
         origen=origen,

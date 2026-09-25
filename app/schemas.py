@@ -319,3 +319,14 @@ class PrecioHistorialOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ProductoEstadoHistorialOut(BaseModel):
+    id: UUID
+    referencia: str
+    activo_nuevo: bool
+    usuario_nombre: Optional[str] = None
+    origen: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

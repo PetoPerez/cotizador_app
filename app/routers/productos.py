@@ -11,7 +11,9 @@ from app import schemas
 from app.security import get_current_user, require_admin
 from app import models
 from app.services.storage_service import upload_image, delete_image, key_from_url
-from app.services.precio_audit import registrar_cambio_precio, ref_producto
+from app.services.precio_audit import (
+    registrar_cambio_precio, ref_producto, registrar_cambio_estado,
+)
 
 router = APIRouter(prefix="/productos", tags=["productos"])
 
@@ -445,6 +447,7 @@ def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_
 
     payload = data.model_dump(exclude_none=True)
     empresas_input = payload.pop("empresas", None)
+    activo_anterior = producto.activo
 
     for field, value in payload.items():
         setattr(producto, field, value)
@@ -483,6 +486,12 @@ def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_
         for eid, pe in existentes.items():
             if eid not in nuevos_ids:
                 db.delete(pe)
+
+    # Bitácora de activación/desactivación: solo si `activo` viene y cambia.
+    registrar_cambio_estado(
+        db, producto=producto, activo_nuevo=payload.get("activo"),
+        activo_anterior=activo_anterior, usuario=current_user, origen="manual",
+    )
 
     db.commit()
     db.refresh(producto)
@@ -552,10 +561,25 @@ def eliminar_imagen(
 
 
 @router.delete("/{id}")
-def eliminar(id: str, db: Session = Depends(get_db), _=Depends(require_admin)):
+def eliminar(id: str, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     producto = db.query(models.Producto).filter(models.Producto.id == id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
+    # El DELETE es un soft-delete (`activo = False`), no borra la fila. Registra
+    # el cambio igual que el PUT, solo si el producto estaba activo.
+    registrar_cambio_estado(
+        db, producto=producto, activo_nuevo=False,
+        activo_anterior=producto.activo, usuario=current_user, origen="manual",
+    )
     producto.activo = False
     db.commit()
     return {"detail": "Producto desactivado"}
+
+
+@router.get("/{id}/historial-estado", response_model=list[schemas.ProductoEstadoHistorialOut])
+def historial_estado(id: str, db: Session = Depends(get_db), _=Depends(require_admin)):
+    """Movimientos de activación/desactivación de un producto, más reciente primero."""
+    return (db.query(models.ProductoEstadoHistorial)
+              .filter(models.ProductoEstadoHistorial.producto_id == id)
+              .order_by(models.ProductoEstadoHistorial.created_at.desc())
+              .all())

@@ -218,6 +218,26 @@ class PrecioHistorial(Base):
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
 
+class ProductoEstadoHistorial(Base):
+    """Registro append-only de cada activación/desactivación de un producto.
+
+    `productos.activo` cambia por dos caminos (`PUT` con `{"activo": false}` y el
+    `DELETE` que hace soft-delete) y ninguno dejaba rastro: la pregunta "¿quién
+    desactivó este producto?" no tenía respuesta. Igual que `PrecioHistorial`,
+    guarda un snapshot legible (`referencia`, `usuario_nombre`) para conservar la
+    trazabilidad aunque el producto o el usuario se eliminen o renombren después."""
+    __tablename__ = "producto_estado_historial"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id", ondelete="SET NULL"), nullable=True)
+    referencia = Column(Text, nullable=False)  # snapshot "MARCA / EQUIPO / MODELO"
+    activo_nuevo = Column(Boolean, nullable=False)  # True = activación, False = desactivación
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    usuario_nombre = Column(String(100))  # snapshot del autor del cambio
+    origen = Column(String(20), nullable=False, default="manual")  # manual | importacion | script
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+
+
 class CotizacionItem(Base):
     __tablename__ = "cotizacion_items"
 
