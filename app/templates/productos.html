@@ -41,7 +41,11 @@
           <option value="descripcion">Descripción</option>
         </select>
         <input type="text" class="form-control" id="search" placeholder="Buscar..." oninput="filtrar()">
+        <label style="display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:12px;color:var(--text2)">
+          <input type="checkbox" id="ver-inactivos" onchange="filtrar()"> Mostrar inactivos
+        </label>
       </div>
+      <div id="aviso-inactivos" class="hidden" style="font-size:12px;color:var(--text3);padding:0 4px 8px"></div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -130,7 +134,7 @@ async function cargar() {
   try {
     const [emps, prods] = await Promise.all([
       apiFetch('/empresas/'),
-      apiFetch('/productos/'),
+      apiFetch('/productos/?incluir_inactivos=true'),
     ]);
     empresas  = Array.isArray(emps)  ? emps  : [];
     productos = Array.isArray(prods) ? prods : [];
@@ -170,8 +174,12 @@ function preciosResumen(p) {
 function filtrar() {
   const q     = document.getElementById('search').value.toLowerCase().trim();
   const campo = document.getElementById('search-campo').value;
+  // Los inactivos se listan al buscar (para que un producto desactivado no
+  // parezca borrado y no se duplique sin querer) o con la casilla marcada.
+  const verInactivos = document.getElementById('ver-inactivos').checked || !!q;
 
   const filtrados = productos.filter(p => {
+    if (!p.activo && !verInactivos) return false;
     if (!q) return true;
     if (campo === 'todos') {
       return (p.marca       || '').toLowerCase().includes(q) ||
@@ -182,6 +190,13 @@ function filtrar() {
     const valor = campo === 'descripcion' ? (p.descripcion || '') : (p[campo] || '');
     return valor.toLowerCase().includes(q);
   });
+
+  const inactivos = filtrados.filter(p => !p.activo).length;
+  const aviso = document.getElementById('aviso-inactivos');
+  aviso.textContent = inactivos
+    ? `${inactivos} de estos productos está${inactivos > 1 ? 'n' : ''} inactivo${inactivos > 1 ? 's' : ''}: no aparece${inactivos > 1 ? 'n' : ''} al cotizar. Usa "Activar" para regresarlo${inactivos > 1 ? 's' : ''} al catálogo.`
+    : '';
+  aviso.classList.toggle('hidden', !inactivos);
 
   renderTabla(filtrados);
 }

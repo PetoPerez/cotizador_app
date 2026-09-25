@@ -30,3 +30,7 @@ scripts/actualizar_precios.py
 # Archivos Excel (datos / plantillas locales)
 *.xlsx
 *.xls
+
+# Estado local de herramientas de IA
+.commandcode/
+_bmad-output/

@@ -34,17 +34,29 @@ def _empresas_para_import(db: Session) -> list[models.Empresa]:
               .all())
 
 
+def _puede_ver_inactivos(incluir_inactivos: bool, rol: str) -> bool:
+    """Solo admin/superadmin ven los productos desactivados, y solo si lo piden.
+
+    Un producto desactivado sale del catálogo y ya no se puede cotizar; el admin
+    necesita verlo para reactivarlo. Sin esto, desactivar equivale a borrar: el
+    registro queda invisible para siempre, incluso para el superadmin.
+    """
+    return bool(incluir_inactivos) and rol in ("admin", "superadmin")
+
+
 @router.get("/", response_model=list[schemas.ProductoOut])
 def listar(
     q: str = None,
     empresa: str = None,  # filtro opcional: código de empresa (clm, supliese_gamesail, etc.)
+    incluir_inactivos: bool = False,  # solo admin: ver también los desactivados
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user: models.Usuario = Depends(get_current_user),
 ):
     query = (db.query(models.Producto)
                .options(selectinload(models.Producto.imagenes),
-                        selectinload(models.Producto.empresas))
-               .filter(models.Producto.activo == True))
+                        selectinload(models.Producto.empresas)))
+    if not _puede_ver_inactivos(incluir_inactivos, current_user.rol):
+        query = query.filter(models.Producto.activo == True)
     if q:
         query = query.filter(
             models.Producto.modelo.ilike(f"%{q}%") |
