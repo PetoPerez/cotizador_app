@@ -1,8 +1,8 @@
 # Bitácora de activación/desactivación de productos
 
 - **Fecha:** 2026-09-24
-- **Estado:** Abierto
-- **Commit(s):** — (pendiente de implementar)
+- **Estado:** Resuelto
+- **Commit(s):** `15ed53a`
 - **Reportado por / contexto:** Peto preguntó quién había borrado el producto
   `GXS-17 / LAVADORA` porque "se perdió el registro". No se pudo responder: nadie
   lo borró, alguien lo desactivó, y **los cambios de `activo` no se registran en
@@ -101,8 +101,15 @@ mismo `activo` o no lo trae.
 
 ## Archivos tocados
 
-Pendiente. Previstos: `app/models.py`, `app/main.py`, `app/routers/productos.py`,
-`app/templates/productos.html`, `tests/test_estado_historial.py`.
+- `app/models.py` — tabla `ProductoEstadoHistorial`.
+- `app/main.py` — `CREATE TABLE IF NOT EXISTS producto_estado_historial` + índice.
+- `app/services/precio_audit.py` — `debe_registrar_estado`, `registrar_cambio_estado`;
+  `ref_producto` ahora acepta `empresa=None` (referencia sin sufijo).
+- `app/routers/productos.py` — registro en `actualizar()` y `eliminar()`, y
+  `GET /productos/{id}/historial-estado` (solo admin).
+- `app/schemas.py` — `ProductoEstadoHistorialOut`.
+- `app/templates/productos.html` — último movimiento bajo el badge "Inactivo".
+- `tests/test_estado_historial.py` — test de la función que decide si registrar.
 
 ## Verificación
 

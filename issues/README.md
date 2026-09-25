@@ -36,4 +36,4 @@ perder el contexto ni repetir diagnósticos. Cada issue vive en su propio archiv
 | 2026-08-19 | [Ajuste de precio: slider ±5% / admin libre](2026-08-19-ajuste-precio-slider.md) | Resuelto | `8dda469`, `8eccc39` |
 | 2026-08-24 | [Imagen de producto se encimaba en el PDF](2026-08-24-pdf-imagen-encimada.md) | Resuelto | `b576835` |
 | 2026-08-31 | [«CLM centro de lavado» no aparece en el listado](2026-08-31-clm-centro-de-lavado.md) | En espera | — |
-| 2026-09-24 | [Bitácora de activación/desactivación de productos](2026-09-24-bitacora-activar-desactivar-productos.md) | Abierto | — |
+| 2026-09-24 | [Bitácora de activación/desactivación de productos](2026-09-24-bitacora-activar-desactivar-productos.md) | Resuelto | `15ed53a` |
