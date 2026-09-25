@@ -576,6 +576,21 @@ def eliminar(id: str, db: Session = Depends(get_db), current_user: models.Usuari
     return {"detail": "Producto desactivado"}
 
 
+@router.get("/historial-estado", response_model=list[schemas.ProductoEstadoHistorialOut])
+def historial_estado_ultimos(db: Session = Depends(get_db), _=Depends(require_admin)):
+    """Último movimiento de CADA producto, en una sola consulta.
+
+    La pantalla de Productos lo pide una vez al cargar. Pedirlo producto por
+    producto eran ~100 peticiones por carga (una por inactivo).
+    """
+    return (db.query(models.ProductoEstadoHistorial)
+              .filter(models.ProductoEstadoHistorial.producto_id.isnot(None))
+              .distinct(models.ProductoEstadoHistorial.producto_id)  # DISTINCT ON
+              .order_by(models.ProductoEstadoHistorial.producto_id,
+                        models.ProductoEstadoHistorial.created_at.desc())
+              .all())
+
+
 @router.get("/{id}/historial-estado", response_model=list[schemas.ProductoEstadoHistorialOut])
 def historial_estado(id: str, db: Session = Depends(get_db), _=Depends(require_admin)):
     """Movimientos de activación/desactivación de un producto, más reciente primero."""

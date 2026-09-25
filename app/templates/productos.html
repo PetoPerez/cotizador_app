@@ -148,18 +148,15 @@ async function cargar() {
 }
 
 async function cargarEstadosHistorial() {
-  // Solo los inactivos tienen movimiento que mostrar; el historial es
+  // Un solo pedido con el último movimiento de cada producto. El historial es
   // informativo, así que un error no debe romper el listado.
   estadoHist = {};
-  const inactivos = productos.filter(p => !p.activo);
-  await Promise.all(inactivos.map(async p => {
-    try {
-      const hist = await apiFetch(`/productos/${p.id}/historial-estado`);
-      estadoHist[p.id] = Array.isArray(hist) && hist.length ? hist[0] : null;
-    } catch {
-      estadoHist[p.id] = null;
-    }
-  }));
+  try {
+    const hist = await apiFetch('/productos/historial-estado');
+    (Array.isArray(hist) ? hist : []).forEach(h => { estadoHist[h.producto_id] = h; });
+  } catch {
+    estadoHist = {};
+  }
 }
 
 function fechaCorta(dateStr) {

@@ -323,6 +323,7 @@ class PrecioHistorialOut(BaseModel):
 
 class ProductoEstadoHistorialOut(BaseModel):
     id: UUID
+    producto_id: Optional[UUID] = None
     referencia: str
     activo_nuevo: bool
     usuario_nombre: Optional[str] = None
