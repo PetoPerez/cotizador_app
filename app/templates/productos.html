@@ -44,6 +44,9 @@
         <label style="display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:12px;color:var(--text2)">
           <input type="checkbox" id="ver-inactivos" onchange="filtrar()"> Mostrar inactivos
         </label>
+        <label style="display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:12px;color:var(--text2)">
+          <input type="checkbox" id="solo-sin-precio" onchange="filtrar()"> Solo sin precio
+        </label>
       </div>
       <div id="aviso-inactivos" class="hidden" style="font-size:12px;color:var(--text3);padding:0 4px 8px"></div>
       <div class="table-wrap">
@@ -109,7 +112,11 @@
       <label class="form-label">Descripción</label>
       <textarea class="form-control" id="f-descripcion" rows="3" placeholder="Descripción del producto..."></textarea>
     </div>
-    <div class="form-group">
+    <div id="aviso-coord" style="display:none;font-size:12px;color:var(--text3);margin-bottom:12px">
+      Se agrega a tu empresa <strong>sin precio</strong>: no se puede cotizar hasta que un admin capture el precio.
+      Si el modelo ya existe en otra empresa, se agrega a la tuya.
+    </div>
+    <div class="form-group" id="empresas-group">
       <label class="form-label">Disponibilidad y precio por empresa (USD)</label>
       <div id="empresas-grid" style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--border);border-radius:8px;padding:10px"></div>
       <div style="font-size:11px;color:var(--text3);margin-top:6px">Los precios se capturan en <strong>USD (dólares)</strong>. Marca la casilla para activar la empresa y captura su precio. Las desmarcadas no se ofrecen al cotizar.</div>
@@ -121,10 +128,30 @@
   </div>
 </div>
 
-<script src="api.js?v=5"></script>
+<script src="api.js?v=6"></script>
 <script>
-requireAdmin();
+requireCatalogo();
 document.getElementById('sidebar-root').innerHTML = renderSidebar('productos');
+
+// Coordinador: mantiene el catálogo de SU empresa (datos, imágenes, altas y
+// activar/desactivar ahí). Ve todos los precios, pero no los edita.
+const esCoord = getUser().rol === 'coordinador';
+if (esCoord) {
+  document.querySelector('.page-subtitle').textContent = 'Catálogo de tu empresa';
+  document.getElementById('empresas-group').style.display = 'none';
+  document.getElementById('aviso-coord').style.display = 'block';
+}
+
+function peMia(p) {
+  return (p.empresas || []).find(pe => pe.empresa_id === getUser().empresa_id);
+}
+
+// Para el coordinador "activo" es el estado en su empresa; para el admin, el global.
+function activoVista(p) {
+  if (!esCoord) return p.activo;
+  const pe = peMia(p);
+  return !!(pe && pe.activo);
+}
 
 let productos = [];
 let empresas  = [];
@@ -194,6 +221,7 @@ function preciosResumen(p) {
     .map(pe => {
       const emp = empresas.find(e => e.id === pe.empresa_id);
       const acr = emp ? emp.acronimo : '?';
+      if (pe.precio_lista == null) return `<span class="badge badge-red">${acr} sin precio</span>`;
       return `<span style="font-family:'DM Mono',monospace;font-size:11px"><strong style="color:var(--accent2)">${acr}</strong> ${formatCurrency(pe.precio_lista, 'USD', 1)}</span>`;
     });
   return partes.length ? partes.join(' &nbsp;·&nbsp; ') : '<span style="color:var(--text3)">sin precios</span>';
@@ -205,9 +233,11 @@ function filtrar() {
   // Los inactivos se listan al buscar (para que un producto desactivado no
   // parezca borrado y no se duplique sin querer) o con la casilla marcada.
   const verInactivos = document.getElementById('ver-inactivos').checked || !!q;
+  const soloSinPrecio = document.getElementById('solo-sin-precio').checked;
 
   const filtrados = productos.filter(p => {
-    if (!p.activo && !verInactivos) return false;
+    if (!activoVista(p) && !verInactivos) return false;
+    if (soloSinPrecio && !(p.empresas || []).some(pe => pe.precio_lista == null)) return false;
     if (!q) return true;
     if (campo === 'todos') {
       return (p.marca       || '').toLowerCase().includes(q) ||
@@ -219,7 +249,7 @@ function filtrar() {
     return valor.toLowerCase().includes(q);
   });
 
-  const inactivos = filtrados.filter(p => !p.activo).length;
+  const inactivos = filtrados.filter(p => !activoVista(p)).length;
   const aviso = document.getElementById('aviso-inactivos');
   aviso.textContent = inactivos
     ? `${inactivos} de estos productos está${inactivos > 1 ? 'n' : ''} inactivo${inactivos > 1 ? 's' : ''}: no aparece${inactivos > 1 ? 'n' : ''} al cotizar. Usa "Activar" para regresarlo${inactivos > 1 ? 's' : ''} al catálogo.`
@@ -257,16 +287,16 @@ function renderTabla(data) {
       <td><span style="font-family:'DM Mono',monospace;font-size:12px">${p.modelo}</span></td>
       <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.descripcion || '—'}</td>
       <td>${preciosResumen(p)}</td>
-      <td>${p.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-red">Inactivo</span>'}
-        ${!p.activo
+      <td>${activoVista(p) ? '<span class="badge badge-green">Activo</span>' : `<span class="badge badge-red">Inactivo${esCoord ? ' en tu empresa' : ''}</span>`}
+        ${!activoVista(p) && !esCoord
           ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">${textoUltimoMovimiento(p.id)}</div>`
           : ''}
       </td>
       <td>
         <div class="flex gap-8">
           <button class="btn btn-secondary btn-sm" onclick="editar('${p.id}')">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="toggleActivo('${p.id}', ${p.activo})">
-            ${p.activo ? 'Desactivar' : 'Activar'}
+          <button class="btn btn-danger btn-sm" onclick="toggleActivo('${p.id}', ${activoVista(p)})">
+            ${activoVista(p) ? 'Desactivar' : 'Activar'}
           </button>
         </div>
       </td>
@@ -396,7 +426,7 @@ function editar(id) {
 
 async function guardar() {
   const empresasInput = [];
-  for (const e of empresas) {
+  for (const e of (esCoord ? [] : empresas)) {
     const chk = document.getElementById(`emp-chk-${e.codigo}`);
     const pre = document.getElementById(`emp-precio-${e.codigo}`);
     if (chk && chk.checked) {
@@ -408,7 +438,7 @@ async function guardar() {
       empresasInput.push({ empresa_id: e.id, precio_lista: precio, activo: true });
     }
   }
-  if (!empresasInput.length) {
+  if (!esCoord && !empresasInput.length) {
     showAlert('Asigna el producto al menos a una empresa', 'danger', 'modal-alert');
     return;
   }
@@ -419,6 +449,8 @@ async function guardar() {
     descripcion: document.getElementById('f-descripcion').value.trim() || null,
     empresas: empresasInput,
   };
+  // El coordinador no manda precios ni empresas: el backend lo liga a la suya.
+  if (esCoord) delete body.empresas;
   if (!body.marca || !body.equipo || !body.modelo) {
     showAlert('Completa todos los campos requeridos', 'danger', 'modal-alert');
     return;
@@ -443,7 +475,9 @@ async function guardar() {
 
 async function toggleActivo(id, activo) {
   try {
-    await apiFetch(`/productos/${id}`, { method: 'PUT', body: JSON.stringify({ activo: !activo }) });
+    // El coordinador (des)activa solo en su empresa; el admin, el producto completo.
+    const ruta = esCoord ? `/productos/${id}/activo-empresa` : `/productos/${id}`;
+    await apiFetch(ruta, { method: 'PUT', body: JSON.stringify({ activo: !activo }) });
     await cargar();
     showAlert(activo ? 'Producto desactivado' : 'Producto activado', 'success');
   } catch (e) {

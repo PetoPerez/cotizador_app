@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import schemas
-from app.security import get_current_user
+from app.security import get_current_user, bloquear_coordinador
 from app import models
 
-router = APIRouter(prefix="/clientes", tags=["clientes"])
+router = APIRouter(prefix="/clientes", tags=["clientes"], dependencies=[Depends(bloquear_coordinador)])
 
 @router.get("/", response_model=list[schemas.ClienteOut])
 def listar(q: str = None, db: Session = Depends(get_db), _=Depends(get_current_user)):

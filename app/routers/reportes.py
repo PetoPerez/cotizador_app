@@ -79,7 +79,7 @@ def reporte_inventario(
         fila = [p.marca, p.equipo, p.modelo, p.descripcion or ""]
         for e in empresas:
             pe = precios.get(str(e.id))
-            fila.append(float(pe.precio_lista) if pe and pe.activo else None)
+            fila.append(float(pe.precio_lista) if pe and pe.activo and pe.precio_lista is not None else None)
         fila.append("Activo" if p.activo else "Inactivo")
         ws.append(fila)
 

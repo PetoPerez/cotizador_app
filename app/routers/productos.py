@@ -5,10 +5,11 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app import schemas
-from app.security import get_current_user, require_admin
+from app.security import get_current_user, require_admin, require_catalogo
 from app import models
 from app.services.storage_service import upload_image, delete_image, key_from_url
 from app.services.precio_audit import (
@@ -46,6 +47,18 @@ def _puede_ver_inactivos(incluir_inactivos: bool, rol: str) -> bool:
     return bool(incluir_inactivos) and rol in ("admin", "superadmin")
 
 
+def _es_coordinador(usuario) -> bool:
+    return usuario.rol == "coordinador"
+
+
+def _exigir_su_empresa(producto, usuario):
+    """El coordinador solo toca productos ligados a su empresa (aunque otras
+    empresas también los vendan: imagen y descripción son del producto)."""
+    if _es_coordinador(usuario) and not any(
+            pe.empresa_id == usuario.empresa_id for pe in producto.empresas):
+        raise HTTPException(status_code=403, detail="Este producto no está en el catálogo de tu empresa")
+
+
 @router.get("/", response_model=list[schemas.ProductoOut])
 def listar(
     q: str = None,
@@ -59,6 +72,11 @@ def listar(
                         selectinload(models.Producto.empresas)))
     if not _puede_ver_inactivos(incluir_inactivos, current_user.rol):
         query = query.filter(models.Producto.activo == True)
+    if _es_coordinador(current_user):
+        # Su catálogo: lo ligado a su empresa, aunque ahí esté desactivado
+        # (para poder reactivarlo).
+        query = query.filter(models.Producto.empresas.any(
+            models.ProductoEmpresa.empresa_id == current_user.empresa_id))
     if q:
         query = query.filter(
             models.Producto.modelo.ilike(f"%{q}%") |
@@ -71,21 +89,24 @@ def listar(
             query = (query.join(models.ProductoEmpresa,
                                 models.ProductoEmpresa.producto_id == models.Producto.id)
                           .filter(models.ProductoEmpresa.empresa_id == empresa_obj.id,
-                                  models.ProductoEmpresa.activo == True))
+                                  models.ProductoEmpresa.activo == True,
+                                  models.ProductoEmpresa.precio_lista.isnot(None)))
     return query.order_by(models.Producto.marca, models.Producto.equipo).all()
 
 
 @router.get("/plantilla-importar")
-def descargar_plantilla(db: Session = Depends(get_db), _=Depends(require_admin)):
-    """Descarga un Excel vacío con los encabezados correctos para importar productos."""
-    empresas = _empresas_para_import(db)
+def descargar_plantilla(db: Session = Depends(get_db), current_user=Depends(require_catalogo)):
+    """Descarga un Excel vacío con los encabezados correctos para importar productos.
+    La del coordinador no trae precios: los captura un admin."""
+    coord = _es_coordinador(current_user)
+    empresas = [] if coord else _empresas_para_import(db)
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Productos"
 
     # Encabezados base + precio_general + una columna por empresa
-    headers = ["marca", "equipo", "modelo", "descripcion", "precio_general"]
+    headers = ["marca", "equipo", "modelo", "descripcion"] + ([] if coord else ["precio_general"])
     for emp in empresas:
         headers.append(f"precio_{emp.acronimo.lower()}")
 
@@ -102,7 +123,7 @@ def descargar_plantilla(db: Session = Depends(get_db), _=Depends(require_admin))
         ws.column_dimensions[cell.column_letter].width = 18
 
     # Fila de ejemplo: producto normal con precio por empresa
-    ejemplo = ["GIRBAU", "Lavadora industrial", "HS-6028", "Capacidad 28kg, motor inverter", ""]
+    ejemplo = ["GIRBAU", "Lavadora industrial", "HS-6028", "Capacidad 28kg, motor inverter"] + ([] if coord else [""])
     for emp in empresas:
         ejemplo.append(75000)
     for col_idx, val in enumerate(ejemplo, start=1):
@@ -113,6 +134,10 @@ def descargar_plantilla(db: Session = Depends(get_db), _=Depends(require_admin))
             "apliquen. · precio_general: el producto queda disponible para TODAS las "
             "empresas a ese precio (si dejas la marca vacía se pone 'General'). · Los "
             "servicios se importan desde su propia plantilla (pantalla de Servicios).")
+    if coord:
+        nota = ("Los productos nuevos quedan en tu empresa SIN precio: no se pueden "
+                "cotizar hasta que un admin capture el precio. Si el modelo ya existe "
+                "en otra empresa, se agrega a la tuya.")
     ws.cell(row=3, column=1, value=nota)
     ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=len(headers))
     ws.cell(row=3, column=1).font = Font(italic=True, color="808080")
@@ -159,7 +184,7 @@ def _norm_clave(s) -> str:
     return " ".join(str(s or "").split()).lower()
 
 
-def _analizar_importacion(rows, empresas, catalogo):
+def _analizar_importacion(rows, empresas, catalogo, empresa_coord=None):
     """Clasifica las filas del Excel en nuevos / a actualizar / sin cambios / errores.
 
     Función PURA (sin base de datos) para poder probarla en aislamiento; ver
@@ -169,6 +194,10 @@ def _analizar_importacion(rows, empresas, catalogo):
                  openpyxl iter_rows(values_only=True).
       empresas : objetos con .codigo y .acronimo (empresas importables).
       catalogo : {(marca,equipo,modelo) normalizados con _norm_clave: _ProductoExistente}.
+      empresa_coord : empresa del coordinador que importa (None = admin). El
+                 coordinador no captura precios: las columnas de precio se
+                 ignoran, lo nuevo entra sin precio y lo que ya existe en otra
+                 empresa se liga a la suya (`ligar`).
 
     Devuelve dict con `error` (str|None; problema de formato: si no es None nada
     debe aplicarse) y, en éxito, nuevos / actualizar / sin_cambios / errores /
@@ -194,6 +223,8 @@ def _analizar_importacion(rows, empresas, catalogo):
             continue
         if h in _COL_BASE:
             col_idx[_COL_BASE[h]] = i
+        elif empresa_coord and (h == "precio_general" or h in precio_col_to_empresa):
+            cols_desconocidas.append(h + " (los precios los captura un admin)")
         elif h == "precio_general":
             idx_general = i
         elif h in precio_col_to_empresa:
@@ -211,7 +242,7 @@ def _analizar_importacion(rows, empresas, catalogo):
                          f"({', '.join(sorted(missing))}). Descarga la plantilla y respeta "
                          f"los encabezados. Encabezados detectados: "
                          f"{', '.join(h for h in headers if h) or '(ninguno)'}"}
-    if not precio_col_idx and idx_general is None:
+    if not empresa_coord and not precio_col_idx and idx_general is None:
         return {**vacio, "columnas_ignoradas": cols_desconocidas,
                 "error": "Formato incorrecto: incluye al menos una columna de precio "
                          "(precio_general, precio_clm, precio_gs, precio_sup o precio_gir)."}
@@ -250,7 +281,7 @@ def _analizar_importacion(rows, empresas, catalogo):
             if p is not None:
                 precios_fila[codigo] = p
 
-        if not precios_fila:
+        if not precios_fila and not empresa_coord:
             errores.append(f"Fila {n} ({modelo}): sin ningún precio válido")
             continue
 
@@ -263,6 +294,9 @@ def _analizar_importacion(rows, empresas, catalogo):
             cambia_desc = desc is not None and (desc or None) != (existente.descripcion or None)
             if cambia_desc:
                 cambios.append("descripción")
+            ligar = bool(empresa_coord) and empresa_coord.codigo not in existente.precios
+            if ligar:
+                cambios.append(f"se agrega a {empresa_coord.acronimo} (sin precio)")
             for codigo, precio in precios_fila.items():
                 emp = empresas_por_codigo[codigo]
                 antes_precio, antes_activo = existente.precios.get(codigo, (None, False))
@@ -273,7 +307,7 @@ def _analizar_importacion(rows, empresas, catalogo):
             if cambios:
                 actualizar.append({"existente_id": existente.id, "desc": desc,
                                    "precios": precios_fila, "cambia_desc": cambia_desc,
-                                   "cambios": cambios, "referencia": ref})
+                                   "ligar": ligar, "cambios": cambios, "referencia": ref})
             else:
                 sin_cambios += 1
         else:
@@ -294,7 +328,7 @@ def importar_excel(
     confirmar: bool = False,       # False = solo vista previa (no escribe); True = aplica
     marca_general: bool = False,   # confirma guardar productos sin marca como 'General'
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_admin),
+    current_user: models.Usuario = Depends(require_catalogo),
 ):
     """Importa productos desde Excel en dos fases.
 
@@ -315,6 +349,11 @@ def importar_excel(
     empresas = _empresas_para_import(db)  # CLM, GS, SUP, GIR (sin servicios)
     empresas_por_codigo = {e.codigo: e for e in empresas}
     emp_por_id = {str(e.id): e for e in empresas}
+    empresa_coord = None
+    if _es_coordinador(current_user):
+        empresa_coord = emp_por_id.get(str(current_user.empresa_id))
+        if not empresa_coord:
+            raise HTTPException(status_code=403, detail="Tu usuario no tiene una empresa de productos asignada")
 
     # Índice de productos existentes en UNA sola consulta. El emparejamiento usa la
     # clave normalizada (minúsculas/espacios colapsados), de modo que si el Excel
@@ -335,7 +374,7 @@ def importar_excel(
         orm_por_id[str(p.id)] = p
 
     # ── Clasificación (función pura, cubierta por tests/test_import_productos.py) ──
-    resultado = _analizar_importacion(rows, empresas, catalogo)
+    resultado = _analizar_importacion(rows, empresas, catalogo, empresa_coord)
     if resultado["error"]:
         raise HTTPException(status_code=400, detail=resultado["error"])
 
@@ -382,17 +421,25 @@ def importar_excel(
             producto_id=producto.id, empresa_id=empresa.id,
             usuario=current_user, origen="importacion")
 
+    def ligar_sin_precio(producto):
+        db.add(models.ProductoEmpresa(producto_id=producto.id, empresa_id=empresa_coord.id,
+                                      precio_lista=None, activo=True))
+
     try:
         for x in nuevos:
             p = models.Producto(marca=x["marca"], equipo=x["equipo"], modelo=x["modelo"], descripcion=x["desc"])
             db.add(p)
             db.flush()
+            if empresa_coord:
+                ligar_sin_precio(p)
             for codigo, precio in x["precios"].items():
                 upsert_precio(p, empresas_por_codigo[codigo], precio)
         for x in actualizar:
             p = orm_por_id[str(x["existente_id"])]
             if x["cambia_desc"]:
                 p.descripcion = x["desc"]
+            if x["ligar"]:
+                ligar_sin_precio(p)
             db.flush()
             for codigo, precio in x["precios"].items():
                 upsert_precio(p, empresas_por_codigo[codigo], precio)
@@ -404,9 +451,34 @@ def importar_excel(
     return {**preview, "confirmado": True}
 
 
+def _alta_coordinador(db: Session, data: schemas.ProductoCreate, usuario) -> models.Producto:
+    """Alta manual del coordinador: sin precio y solo en su empresa. Si el modelo
+    ya existe (lo vende otra empresa) no se duplica: se liga a la suya."""
+    clave = (_norm_clave(data.marca), _norm_clave(data.equipo), _norm_clave(data.modelo))
+    candidatos = (db.query(models.Producto)
+                    .filter(func.lower(func.trim(models.Producto.modelo)) == data.modelo.strip().lower())
+                    .all())
+    producto = next((c for c in candidatos
+                     if (_norm_clave(c.marca), _norm_clave(c.equipo), _norm_clave(c.modelo)) == clave), None)
+    if producto is None:
+        producto = models.Producto(marca=data.marca, equipo=data.equipo, modelo=data.modelo,
+                                   descripcion=data.descripcion)
+        db.add(producto)
+        db.flush()
+    elif any(pe.empresa_id == usuario.empresa_id for pe in producto.empresas):
+        raise HTTPException(status_code=400, detail="Ese producto ya está en el catálogo de tu empresa")
+    db.add(models.ProductoEmpresa(producto_id=producto.id, empresa_id=usuario.empresa_id,
+                                  precio_lista=None, activo=True))
+    db.commit()
+    db.refresh(producto)
+    return producto
+
+
 @router.post("/", response_model=schemas.ProductoOut)
 def crear(data: schemas.ProductoCreate, db: Session = Depends(get_db),
-          current_user: models.Usuario = Depends(require_admin)):
+          current_user: models.Usuario = Depends(require_catalogo)):
+    if _es_coordinador(current_user):
+        return _alta_coordinador(db, data, current_user)
     if not data.empresas:
         raise HTTPException(status_code=400, detail="Debes asignar el producto a al menos una empresa")
 
@@ -440,10 +512,15 @@ def crear(data: schemas.ProductoCreate, db: Session = Depends(get_db),
 
 @router.put("/{id}", response_model=schemas.ProductoOut)
 def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_db),
-               current_user: models.Usuario = Depends(require_admin)):
+               current_user: models.Usuario = Depends(require_catalogo)):
     producto = db.query(models.Producto).filter(models.Producto.id == id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
+    _exigir_su_empresa(producto, current_user)
+    if _es_coordinador(current_user) and (data.empresas is not None or data.activo is not None):
+        # Precios y empresas son del admin; el coordinador (des)activa solo en
+        # su empresa con PUT /{id}/activo-empresa.
+        raise HTTPException(status_code=403, detail="El coordinador no puede cambiar precios, empresas ni el estado global")
 
     payload = data.model_dump(exclude_none=True)
     empresas_input = payload.pop("empresas", None)
@@ -498,16 +575,38 @@ def actualizar(id: str, data: schemas.ProductoUpdate, db: Session = Depends(get_
     return producto
 
 
+@router.put("/{id}/activo-empresa", response_model=schemas.ProductoOut)
+def activo_en_su_empresa(id: str, data: schemas.ProductoActivoEmpresa, db: Session = Depends(get_db),
+                         current_user: models.Usuario = Depends(require_catalogo)):
+    """(Des)activa el producto solo en la empresa del usuario; las demás empresas
+    lo conservan. Es como el coordinador apaga un producto."""
+    producto = db.query(models.Producto).filter(models.Producto.id == id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    pe = next((x for x in producto.empresas if x.empresa_id == current_user.empresa_id), None)
+    if not pe:
+        raise HTTPException(status_code=403, detail="Este producto no está en el catálogo de tu empresa")
+    registrar_cambio_estado(
+        db, producto=producto, activo_nuevo=data.activo, activo_anterior=pe.activo,
+        empresa=pe.empresa, usuario=current_user, origen="manual",
+    )
+    pe.activo = data.activo
+    db.commit()
+    db.refresh(producto)
+    return producto
+
+
 @router.post("/{id}/imagen", response_model=schemas.ProductoOut)
 async def subir_imagen(
     id: str,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _=Depends(require_admin),
+    current_user: models.Usuario = Depends(require_catalogo),
 ):
     producto = db.query(models.Producto).filter(models.Producto.id == id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
+    _exigir_su_empresa(producto, current_user)
     if not (file.content_type or "").startswith("image/"):
         raise HTTPException(status_code=400, detail="Solo se aceptan archivos de imagen")
 
@@ -535,8 +634,12 @@ def eliminar_imagen(
     id: str,
     imagen_id: str,
     db: Session = Depends(get_db),
-    _=Depends(require_admin),
+    current_user: models.Usuario = Depends(require_catalogo),
 ):
+    producto = db.query(models.Producto).filter(models.Producto.id == id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    _exigir_su_empresa(producto, current_user)
     imagen = db.query(models.ProductoImagen).filter(
         models.ProductoImagen.id == imagen_id,
         models.ProductoImagen.producto_id == id,
@@ -551,7 +654,6 @@ def eliminar_imagen(
 
     db.delete(imagen)
 
-    producto = db.query(models.Producto).filter(models.Producto.id == id).first()
     restantes = (db.query(models.ProductoImagen)
                  .filter(models.ProductoImagen.producto_id == id)
                  .order_by(models.ProductoImagen.orden).all())
@@ -584,7 +686,10 @@ def historial_estado_ultimos(db: Session = Depends(get_db), _=Depends(require_ad
     producto eran ~100 peticiones por carga (una por inactivo).
     """
     return (db.query(models.ProductoEstadoHistorial)
-              .filter(models.ProductoEstadoHistorial.producto_id.isnot(None))
+              .filter(models.ProductoEstadoHistorial.producto_id.isnot(None),
+                      # Solo (des)activaciones del producto completo; las de una
+                      # sola empresa no explican por qué está inactivo.
+                      models.ProductoEstadoHistorial.empresa_id.is_(None))
               .distinct(models.ProductoEstadoHistorial.producto_id)  # DISTINCT ON
               .order_by(models.ProductoEstadoHistorial.producto_id,
                         models.ProductoEstadoHistorial.created_at.desc())

@@ -412,7 +412,7 @@
   </div>
 </div>
 
-<script src="api.js?v=5"></script>
+<script src="api.js?v=6"></script>
 <script>
 requireAuth();
 document.getElementById('sidebar-root').innerHTML = renderSidebar('cotizaciones');
@@ -622,6 +622,9 @@ async function init() {
       apiFetch('/clientes/'),
       apiFetch('/empresas/'),
     ]);
+    // Un producto sin precio en una empresa (alta de coordinador pendiente) no
+    // se puede cotizar ahí: se quita de sus empresas.
+    productos.forEach(p => { p.empresas = (p.empresas || []).filter(pe => pe.precio_lista != null); });
     await loadTipoCambio();
     configurarEmpresasPorRol();
     aplicarPrecioEfectivo();
@@ -775,42 +778,20 @@ function actualizarEmpresas() {
 }
 
 function configurarEmpresasPorRol() {
-  if (user.rol === 'admin' || user.rol === 'superadmin') {
-    // Admin/Superadmin ve todos los checkboxes
-    ['lbl-clm','lbl-girbau','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
-      .forEach(id => document.getElementById(id).style.display = 'flex');
-  } else {
-    // Vendedor: solo su empresa, preseleccionada
-    const empresa = empresas.find(e => e.id === user.empresa_id);
-    const codigoUsuario = empresa ? empresa.codigo : null;
-
-    ['lbl-clm','lbl-girbau','lbl-supliese-gamesail','lbl-supliese','lbl-servicios-lavanderia']
-      .forEach(id => document.getElementById(id).style.display = 'none');
-
-    ['chk-clm','chk-girbau','chk-supliese-gamesail','chk-supliese','chk-servicios-lavanderia']
-      .forEach(id => document.getElementById(id).checked = false);
-
-    const mapaChk = {
-      'clm': 'chk-clm',
-      'girbau': 'chk-girbau',
-      'supliese_gamesail': 'chk-supliese-gamesail',
-      'supliese': 'chk-supliese',
-      'servicios_lavanderia': 'chk-servicios-lavanderia',
-    };
-    const mapaLbl = {
-      'clm': 'lbl-clm',
-      'girbau': 'lbl-girbau',
-      'supliese_gamesail': 'lbl-supliese-gamesail',
-      'supliese': 'lbl-supliese',
-      'servicios_lavanderia': 'lbl-servicios-lavanderia',
-    };
-    if (codigoUsuario && mapaChk[codigoUsuario]) {
-      const lbl = document.getElementById(mapaLbl[codigoUsuario]);
-      lbl.style.display = 'flex';
-      const chk = document.getElementById(mapaChk[codigoUsuario]);
-      chk.checked = true;
-      chk.disabled = true;
-    }
+  // Todos ven y cotizan con todas las empresas (una o varias a la vez). Al
+  // vendedor se le preselecciona la suya; el admin arranca con CLM.
+  const ids = {
+    'clm': 'clm',
+    'girbau': 'girbau',
+    'supliese_gamesail': 'supliese-gamesail',
+    'supliese': 'supliese',
+    'servicios_lavanderia': 'servicios-lavanderia',
+  };
+  Object.values(ids).forEach(id => document.getElementById(`lbl-${id}`).style.display = 'flex');
+  const empresa = empresas.find(e => e.id === user.empresa_id);
+  if (empresa && ids[empresa.codigo]) {
+    Object.values(ids).forEach(id => document.getElementById(`chk-${id}`).checked = false);
+    document.getElementById(`chk-${ids[empresa.codigo]}`).checked = true;
   }
   actualizarEmpresas();
 }

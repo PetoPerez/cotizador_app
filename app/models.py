@@ -97,7 +97,9 @@ class ProductoEmpresa(Base):
 
     producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id", ondelete="CASCADE"), primary_key=True)
     empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="CASCADE"), primary_key=True)
-    precio_lista = Column(Numeric(12, 2), nullable=False)
+    # NULL = alta de un coordinador pendiente de precio: no se puede cotizar
+    # hasta que un admin lo capture.
+    precio_lista = Column(Numeric(12, 2), nullable=True)
     activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=now_utc)
 
@@ -231,6 +233,8 @@ class ProductoEstadoHistorial(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     producto_id = Column(UUID(as_uuid=True), ForeignKey("productos.id", ondelete="SET NULL"), nullable=True)
     referencia = Column(Text, nullable=False)  # snapshot "MARCA / EQUIPO / MODELO"
+    # NULL = se (des)activó el producto completo; con valor = solo en esa empresa.
+    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="SET NULL"), nullable=True)
     activo_nuevo = Column(Boolean, nullable=False)  # True = activación, False = desactivación
     usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     usuario_nombre = Column(String(100))  # snapshot del autor del cambio

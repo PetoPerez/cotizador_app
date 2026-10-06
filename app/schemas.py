@@ -34,7 +34,7 @@ class UsuarioCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
-    rol: str = Field("vendedor", pattern="^(admin|vendedor)$")
+    rol: str = Field("vendedor", pattern="^(admin|vendedor|coordinador)$")
     margen_min: float = Field(-5.0, ge=-100, le=0)
     margen_max: float = Field(5.0, ge=0, le=100)
     empresa_id: Optional[UUID] = None
@@ -45,7 +45,7 @@ class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=1, max_length=100)
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(None, min_length=6, max_length=100)
-    rol: Optional[str] = Field(None, pattern="^(admin|vendedor)$")
+    rol: Optional[str] = Field(None, pattern="^(admin|vendedor|coordinador)$")
     margen_min: Optional[float] = Field(None, ge=-100, le=0)
     margen_max: Optional[float] = Field(None, ge=0, le=100)
     activo: Optional[bool] = None
@@ -147,7 +147,7 @@ class ProductoEmpresaInput(BaseModel):
 
 class ProductoEmpresaOut(BaseModel):
     empresa_id: UUID
-    precio_lista: float
+    precio_lista: Optional[float] = None  # None = pendiente de precio (alta de coordinador)
     activo: bool
 
     model_config = {"from_attributes": True}
@@ -167,6 +167,9 @@ class ProductoUpdate(BaseModel):
     descripcion: Optional[str] = Field(None, max_length=2000)
     activo: Optional[bool] = None
     empresas: Optional[List[ProductoEmpresaInput]] = None
+
+class ProductoActivoEmpresa(BaseModel):
+    activo: bool
 
 class ProductoImagenOut(BaseModel):
     id: UUID
@@ -324,6 +327,7 @@ class PrecioHistorialOut(BaseModel):
 class ProductoEstadoHistorialOut(BaseModel):
     id: UUID
     producto_id: Optional[UUID] = None
+    empresa_id: Optional[UUID] = None
     referencia: str
     activo_nuevo: bool
     usuario_nombre: Optional[str] = None

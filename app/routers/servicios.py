@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
 from app import schemas, models
-from app.security import get_current_user, require_admin
+from app.security import get_current_user, require_admin, bloquear_coordinador
 from app.services.precio_audit import registrar_cambio_precio
 
-router = APIRouter(prefix="/servicios", tags=["servicios"])
+router = APIRouter(prefix="/servicios", tags=["servicios"], dependencies=[Depends(bloquear_coordinador)])
 
 _TIPOS_VALIDOS = {"mantenimiento", "puesta_en_marcha", "otro"}
 _TIPO_ALIAS = {

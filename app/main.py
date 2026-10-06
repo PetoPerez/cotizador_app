@@ -77,7 +77,7 @@ def on_startup():
         conn.execute(text("UPDATE cotizaciones SET empresa = 'servicios_lavanderia' WHERE empresa = 'supliese_gomez'"))
         # Permitir roles 'servicios' y 'superadmin' en check constraint
         conn.execute(text("ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check"))
-        conn.execute(text("ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'vendedor', 'servicios', 'superadmin'))"))
+        conn.execute(text("ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'vendedor', 'servicios', 'superadmin', 'coordinador'))"))
         # Garantizar superadmin único: admin@tuempresa.com
         conn.execute(text("UPDATE usuarios SET rol = 'superadmin' WHERE email = 'admin@tuempresa.com' AND rol != 'superadmin'"))
 
@@ -260,6 +260,13 @@ def on_startup():
             )
         """))
         conn.execute(text(
+            "ALTER TABLE producto_estado_historial ADD COLUMN IF NOT EXISTS empresa_id "
+            "UUID REFERENCES empresas(id) ON DELETE SET NULL"
+        ))
+        # Altas de coordinador: el producto se liga a su empresa sin precio
+        # hasta que un admin lo captura.
+        conn.execute(text("ALTER TABLE producto_empresa ALTER COLUMN precio_lista DROP NOT NULL"))
+        conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_producto_estado_historial_producto "
             "ON producto_estado_historial (producto_id)"
         ))
@@ -322,6 +329,7 @@ api.include_router(auth.router)
 api.include_router(usuarios.router)
 api.include_router(clientes.router)
 api.include_router(productos.router)
+api.include_router(cotizaciones.tc_router)
 api.include_router(cotizaciones.router)
 api.include_router(empresas.router)
 api.include_router(servicios.router)

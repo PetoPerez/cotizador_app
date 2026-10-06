@@ -81,6 +81,7 @@
         <label class="form-label">Rol</label>
         <select class="form-control" id="f-rol" onchange="onRolChange()">
           <option value="vendedor">Vendedor</option>
+          <option value="coordinador">Coordinador de empresa</option>
           <option value="admin">Admin</option>
         </select>
       </div>
@@ -95,7 +96,7 @@
       <select class="form-control" id="f-empresa">
         <option value="">— Selecciona empresa —</option>
       </select>
-      <p style="font-size:11px;color:var(--text3);margin-top:4px">Solo se aplica al rol Vendedor. Admins no requieren empresa.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:4px">Vendedor: empresa preseleccionada al cotizar (puede cotizar con todas). Coordinador: empresa cuyo catálogo mantiene. Admins no requieren empresa.</p>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="form-group">
@@ -144,7 +145,7 @@
   </div>
 </div>
 
-<script src="api.js?v=5"></script>
+<script src="api.js?v=6"></script>
 <script>
 requireAdmin();
 document.getElementById('sidebar-root').innerHTML = renderSidebar('usuarios');
@@ -178,7 +179,7 @@ function rellenarSelectEmpresas() {
 
 function onRolChange() {
   const rol = document.getElementById('f-rol').value;
-  document.getElementById('empresa-group').style.display = (rol === 'vendedor') ? 'block' : 'none';
+  document.getElementById('empresa-group').style.display = (rol === 'vendedor' || rol === 'coordinador') ? 'block' : 'none';
 }
 
 function nombreEmpresa(empresa_id) {
@@ -202,6 +203,7 @@ function renderTabla() {
       <td>${
         u.rol === 'superadmin' ? '<span class="badge badge-red">Superadmin</span>' :
         u.rol === 'admin'      ? '<span class="badge badge-blue">Admin</span>' :
+        u.rol === 'coordinador' ? '<span class="badge badge-green">Coordinador</span>' :
                                  '<span class="badge badge-gray">Vendedor</span>'}</td>
       <td>${(u.rol === 'admin' || u.rol === 'superadmin') ? '<span style="color:var(--text3)">—</span>' : `<strong>${nombreEmpresa(u.empresa_id)}</strong>`}</td>
       <td style="font-family:'DM Mono',monospace;color:var(--danger)">${u.margen_min}%</td>
@@ -275,8 +277,8 @@ async function guardar() {
   const numeroCortoIn = document.getElementById('f-numero-corto').value;
   const numeroCorto   = numeroCortoIn === '' ? null : parseInt(numeroCortoIn, 10);
 
-  if (rol === 'vendedor' && !empresaId) {
-    showAlert('Asigna una empresa al vendedor', 'danger', 'modal-alert');
+  if ((rol === 'vendedor' || rol === 'coordinador') && !empresaId) {
+    showAlert(`Asigna una empresa al ${rol}`, 'danger', 'modal-alert');
     return;
   }
 
@@ -287,7 +289,7 @@ async function guardar() {
     rol: rol,
     margen_min: margenMin,
     margen_max: margenMax,
-    empresa_id: rol === 'vendedor' ? empresaId : null,
+    empresa_id: (rol === 'vendedor' || rol === 'coordinador') ? empresaId : null,
     numero_corto: numeroCorto,
   };
 

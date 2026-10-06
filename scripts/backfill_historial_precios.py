@@ -50,7 +50,7 @@ def main():
                     .filter(models.PrecioHistorial.producto_id == pe.producto_id,
                             models.PrecioHistorial.empresa_id == pe.empresa_id)
                     .first())
-            if ya:
+            if ya or pe.precio_lista is None:  # sin precio aún: no hay línea base
                 omitidos_prod += 1
                 continue
             ref = ref_producto(pe.producto, pe.empresa)

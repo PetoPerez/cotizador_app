@@ -6,16 +6,19 @@ from sqlalchemy import text
 import io
 from app.database import get_db
 from app import schemas
-from app.security import get_current_user, require_admin
+from app.security import get_current_user, require_admin, bloquear_coordinador
 from app.config import settings
 from app.services.pdf_service import generar_pdf
 from app.services.exchange_rate_service import get_usd_mxn
 from app import models
 
-router = APIRouter(prefix="/cotizaciones", tags=["cotizaciones"])
+router = APIRouter(prefix="/cotizaciones", tags=["cotizaciones"], dependencies=[Depends(bloquear_coordinador)])
+# El tipo de cambio lo usa la barra lateral de todas las pantallas, incluida la
+# del coordinador; por eso va en un router aparte, sin el bloqueo.
+tc_router = APIRouter(prefix="/cotizaciones", tags=["cotizaciones"])
 
 
-@router.get("/tipo-cambio")
+@tc_router.get("/tipo-cambio")
 def tipo_cambio(_=Depends(get_current_user)):
     rate = get_usd_mxn()
     if rate is None:
@@ -79,14 +82,8 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
     if not data.items:
         raise HTTPException(status_code=400, detail="La cotización debe tener al menos un ítem")
 
-    # Validar permisos por empresa asignada (admin puede con cualquiera; vendedor solo su empresa)
-    empresas_set = set(data.empresas)
-    if current_user.rol == "vendedor":
-        if current_user.empresa_id is None:
-            raise HTTPException(status_code=403, detail="El usuario no tiene una empresa asignada")
-        empresa_propia = db.query(models.Empresa).filter(models.Empresa.id == current_user.empresa_id).first()
-        if not empresa_propia or empresas_set != {empresa_propia.codigo}:
-            raise HTTPException(status_code=403, detail=f"Solo puedes cotizar con la empresa {empresa_propia.codigo if empresa_propia else ''}")
+    # Cualquier vendedor cotiza con cualquier empresa (una o varias a la vez);
+    # su empresa asignada solo es la preseleccionada en pantalla.
 
     cliente = db.query(models.Cliente).filter(models.Cliente.id == data.cliente_id).first()
     if not cliente:
@@ -204,6 +201,7 @@ def crear(data: schemas.CotizacionCreate, db: Session = Depends(get_db), current
                     models.ProductoEmpresa.producto_id == producto.id,
                     models.ProductoEmpresa.empresa_id == empresa_precio.id,
                     models.ProductoEmpresa.activo == True,
+                    models.ProductoEmpresa.precio_lista.isnot(None),  # pendiente de precio
                 ).first()
                 if not pe:
                     raise HTTPException(

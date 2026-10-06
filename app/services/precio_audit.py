@@ -23,8 +23,8 @@ def ref_producto(producto, empresa=None) -> str:
     """Snapshot legible de un producto.
 
     Con `empresa`, agrega el acrónimo ("MARCA / EQUIPO / MODELO — CLM"); sin ella,
-    devuelve solo la referencia base. El historial de estado no lleva el sufijo de
-    empresa porque `activo` es del producto, no de un precio por empresa.
+    devuelve solo la referencia base. El historial de estado lleva el sufijo solo
+    cuando el producto se (des)activó en una empresa y no completo.
     """
     base = f"{producto.marca} / {producto.equipo} / {producto.modelo}"
     if empresa is None:
@@ -94,6 +94,7 @@ def registrar_cambio_estado(
     producto,
     activo_nuevo,
     activo_anterior=None,
+    empresa=None,           # con valor: el cambio fue solo en esa empresa
     usuario=None,           # objeto Usuario (o None para cambios de script)
     usuario_nombre=None,    # override del nombre (p. ej. "script")
     origen="manual",        # canal: manual | importacion | script
@@ -108,7 +109,8 @@ def registrar_cambio_estado(
 
     reg = models.ProductoEstadoHistorial(
         producto_id=getattr(producto, "id", None),
-        referencia=ref_producto(producto),
+        referencia=ref_producto(producto, empresa),
+        empresa_id=getattr(empresa, "id", None),
         activo_nuevo=bool(activo_nuevo),
         usuario_id=getattr(usuario, "id", None),
         usuario_nombre=usuario_nombre or getattr(usuario, "nombre", None),

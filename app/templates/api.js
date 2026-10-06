@@ -15,6 +15,14 @@ function getUser() {
 
 function requireAuth() {
   if (!getToken()) window.location.href = '/login';
+  // El coordinador solo mantiene su catálogo: cualquier otra pantalla lo manda ahí.
+  else if (getUser().rol === 'coordinador' && window.location.pathname !== '/productos') window.location.href = '/productos';
+}
+
+function requireCatalogo() {
+  requireAuth();
+  const rol = getUser().rol;
+  if (!['admin', 'superadmin', 'coordinador'].includes(rol)) window.location.href = '/cotizaciones';
 }
 
 function requireAdmin() {
@@ -123,6 +131,7 @@ function renderSidebar(active) {
     { key: 'reportes',     label: 'Reportes',      href: '/reportes',   adminOnly: true },
     { key: 'usuarios',     label: 'Usuarios',      href: '/usuarios',   adminOnly: true },
   ].filter(l => {
+    if (user.rol === 'coordinador') return l.key === 'productos';
     if (l.adminOnly) return isAdmin;
     if ('show' in l) return l.show;
     return true;

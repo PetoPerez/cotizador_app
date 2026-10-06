@@ -16,6 +16,18 @@ def _es_superadmin(usuario: models.Usuario) -> bool:
     return usuario is not None and usuario.rol == "superadmin"
 
 
+def _validar_coordinador(db: Session, rol, empresa_id):
+    """El coordinador mantiene el catálogo de UNA empresa de productos: sin
+    empresa no tendría qué mantener, y SDL no tiene catálogo propio de equipos."""
+    if rol != "coordinador":
+        return
+    empresa = db.query(models.Empresa).filter(models.Empresa.id == empresa_id).first() if empresa_id else None
+    if not empresa:
+        raise HTTPException(status_code=400, detail="Asigna una empresa al coordinador")
+    if empresa.codigo == "servicios_lavanderia":
+        raise HTTPException(status_code=400, detail="Servicios de Lavandería no tiene catálogo de productos para coordinar")
+
+
 @router.get("/", response_model=list[schemas.UsuarioOut])
 def listar(db: Session = Depends(get_db),
            current_user: models.Usuario = Depends(require_admin)):
@@ -67,6 +79,7 @@ def crear(data: schemas.UsuarioCreate, db: Session = Depends(get_db),
         raise HTTPException(status_code=400, detail="Email ya registrado")
     if data.margen_min > data.margen_max:
         raise HTTPException(status_code=400, detail="margen_min no puede ser mayor que margen_max")
+    _validar_coordinador(db, data.rol, data.empresa_id)
 
     # Auto-asignar numero_corto si no viene
     numero = data.numero_corto
@@ -100,7 +113,9 @@ def actualizar(id: str, data: schemas.UsuarioUpdate, db: Session = Depends(get_d
     # Solo el superadmin puede modificar a otros superadmins (y a sí mismo)
     if _es_superadmin(usuario) and current_user.rol != "superadmin":
         raise HTTPException(status_code=403, detail="No puedes modificar al superadmin")
-    for field, value in data.model_dump(exclude_none=True).items():
+    cambios = data.model_dump(exclude_none=True)
+    _validar_coordinador(db, cambios.get("rol", usuario.rol), cambios.get("empresa_id", usuario.empresa_id))
+    for field, value in cambios.items():
         if field == "password":
             setattr(usuario, "password_hash", hash_password(value))
         else:

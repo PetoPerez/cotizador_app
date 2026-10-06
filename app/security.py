@@ -59,3 +59,16 @@ def require_superadmin(current_user: models.Usuario = Depends(get_current_user))
     if current_user.rol != "superadmin":
         raise HTTPException(status_code=403, detail="Se requiere rol superadmin")
     return current_user
+
+def require_catalogo(current_user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
+    """Admin, superadmin o coordinador: quienes mantienen el catálogo de productos.
+    Lo que el coordinador puede tocar dentro de él se acota en el router."""
+    if current_user.rol not in ("admin", "superadmin", "coordinador"):
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar productos")
+    return current_user
+
+def bloquear_coordinador(current_user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
+    """El coordinador solo mantiene catálogo: no cotiza ni ve clientes."""
+    if current_user.rol == "coordinador":
+        raise HTTPException(status_code=403, detail="El coordinador no tiene acceso a esta sección")
+    return current_user
